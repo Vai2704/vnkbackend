@@ -37,8 +37,4 @@ public class ReferralCode extends BaseEntity {
     @Column(name = "successful_referrals")
     @Builder.Default
     private Integer successfulReferrals = 0;
-
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
 }

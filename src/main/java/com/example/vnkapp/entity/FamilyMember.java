@@ -1,5 +1,7 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.common.Gender;
+import com.example.vnkapp.enums.common.Relationship;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -54,17 +56,4 @@ public class FamilyMember extends BaseEntity {
 
     @Column(name = "profile_image_url")
     private String profileImageUrl;
-
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
-
-    public enum Relationship {
-        SELF, SPOUSE, FATHER, MOTHER, SON, DAUGHTER, BROTHER, SISTER,
-        GRANDFATHER, GRANDMOTHER, GRANDSON, GRANDDAUGHTER, OTHER
-    }
-
-    public enum Gender {
-        MALE, FEMALE, OTHER
-    }
 }

@@ -1,4 +1,4 @@
-package com.example.vnkapp.dto;
+package com.example.vnkapp.dto.user;
 
 import java.time.Instant;
 

@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.user.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -39,10 +40,6 @@ public class User extends BaseEntity {
     @Column(name = "profile_image_url")
     private String profileImageUrl;
 
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
-
     @Column(name = "is_email_verified", nullable = false)
     @Builder.Default
     private Boolean isEmailVerified = false;
@@ -55,8 +52,4 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private UserRole role = UserRole.CUSTOMER;
-
-    public enum UserRole {
-        CUSTOMER, ADMIN, SUPER_ADMIN
-    }
 }

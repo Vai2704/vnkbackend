@@ -40,10 +40,6 @@ public class UserSession extends BaseEntity {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
-
     public boolean isExpired() {
         return Instant.now().isAfter(expiresAt);
     }

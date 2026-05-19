@@ -43,8 +43,4 @@ public class Disease extends BaseEntity {
     @Column(name = "is_chronic", nullable = false)
     @Builder.Default
     private Boolean isChronic = false;
-
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
 }

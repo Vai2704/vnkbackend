@@ -1,4 +1,4 @@
-package com.example.vnkapp.dto;
+package com.example.vnkapp.dto.common;
 
 public record ApiResponseDto<T>(
         String status,

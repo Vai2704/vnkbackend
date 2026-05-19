@@ -37,10 +37,6 @@ public class MedicationReminder extends BaseEntity {
     @Column(name = "reminder_label")
     private String reminderLabel;
 
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
-
     @Column(name = "snooze_minutes")
     @Builder.Default
     private Integer snoozeMinutes = 10;

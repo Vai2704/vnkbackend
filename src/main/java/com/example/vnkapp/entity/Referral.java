@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.referral.ReferralStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,17 +39,13 @@ public class Referral extends BaseEntity {
     private UUID referralCodeId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "referral_status", nullable = false)
     @Builder.Default
-    private ReferralStatus status = ReferralStatus.PENDING;
+    private ReferralStatus referralStatus = ReferralStatus.PENDING;
 
     @Column(name = "completed_at")
     private Instant completedAt;
 
     @Column(name = "first_order_id")
     private UUID firstOrderId;
-
-    public enum ReferralStatus {
-        PENDING, COMPLETED, EXPIRED, CANCELLED
-    }
 }

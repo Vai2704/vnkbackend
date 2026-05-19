@@ -18,7 +18,7 @@ import java.util.UUID;
     @Index(name = "idx_products_category_id", columnList = "category_id"),
     @Index(name = "idx_products_slug", columnList = "slug"),
     @Index(name = "idx_products_sku", columnList = "sku"),
-    @Index(name = "idx_products_is_active", columnList = "is_active")
+    @Index(name = "idx_products_status", columnList = "status")
 })
 @Getter
 @Setter
@@ -73,10 +73,6 @@ public class Product extends BaseEntity {
 
     @Column(name = "how_to_use", columnDefinition = "TEXT")
     private String howToUse;
-
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
 
     @Column(name = "is_featured", nullable = false)
     @Builder.Default

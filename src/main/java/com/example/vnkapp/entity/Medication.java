@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.medication.MedicationForm;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -61,12 +62,4 @@ public class Medication extends BaseEntity {
     @Column(name = "is_prescription_required", nullable = false)
     @Builder.Default
     private Boolean isPrescriptionRequired = false;
-
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
-
-    public enum MedicationForm {
-        TABLET, CAPSULE, SYRUP, INJECTION, CREAM, OINTMENT, DROPS, INHALER, PATCH, POWDER, GEL, SPRAY, OTHER
-    }
 }

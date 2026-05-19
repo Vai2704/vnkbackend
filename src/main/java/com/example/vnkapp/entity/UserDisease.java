@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.medication.DiseaseStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -50,14 +51,10 @@ public class UserDisease extends BaseEntity {
     private String diagnosedBy;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "disease_status", nullable = false)
     @Builder.Default
-    private DiseaseStatus status = DiseaseStatus.ACTIVE;
+    private DiseaseStatus diseaseStatus = DiseaseStatus.ACTIVE;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
-
-    public enum DiseaseStatus {
-        ACTIVE, RECOVERED, MANAGED, CHRONIC
-    }
 }

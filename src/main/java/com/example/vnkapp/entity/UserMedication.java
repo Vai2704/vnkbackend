@@ -1,5 +1,8 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.medication.Frequency;
+import com.example.vnkapp.enums.medication.MealRelation;
+import com.example.vnkapp.enums.medication.MedicationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -74,9 +77,9 @@ public class UserMedication extends BaseEntity {
     private String prescriptionImageUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "medication_status", nullable = false)
     @Builder.Default
-    private MedicationStatus status = MedicationStatus.ACTIVE;
+    private MedicationStatus medicationStatus = MedicationStatus.ACTIVE;
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
@@ -84,18 +87,4 @@ public class UserMedication extends BaseEntity {
     @Column(name = "reminder_enabled", nullable = false)
     @Builder.Default
     private Boolean reminderEnabled = true;
-
-    public enum Frequency {
-        ONCE_DAILY, TWICE_DAILY, THRICE_DAILY, FOUR_TIMES_DAILY,
-        EVERY_HOUR, EVERY_TWO_HOURS, EVERY_FOUR_HOURS, EVERY_SIX_HOURS, EVERY_EIGHT_HOURS,
-        WEEKLY, ALTERNATE_DAYS, AS_NEEDED, CUSTOM
-    }
-
-    public enum MealRelation {
-        BEFORE_MEAL, AFTER_MEAL, WITH_MEAL, EMPTY_STOMACH, ANY_TIME
-    }
-
-    public enum MedicationStatus {
-        ACTIVE, PAUSED, COMPLETED, DISCONTINUED
-    }
 }

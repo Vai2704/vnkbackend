@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.product.DiscountType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -62,17 +63,9 @@ public class Coupon extends BaseEntity {
     @Column(name = "valid_until", nullable = false)
     private Instant validUntil;
 
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
-
-    public enum DiscountType {
-        PERCENTAGE, FIXED_AMOUNT
-    }
-
     public boolean isValid() {
         Instant now = Instant.now();
-        return isActive
+        return isActive()
             && now.isAfter(validFrom)
             && now.isBefore(validUntil)
             && (usageLimit == null || timesUsed < usageLimit);

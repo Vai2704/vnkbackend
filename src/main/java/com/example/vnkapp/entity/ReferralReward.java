@@ -1,5 +1,7 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.referral.RewardStatus;
+import com.example.vnkapp.enums.referral.RewardType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -45,9 +47,9 @@ public class ReferralReward extends BaseEntity {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "reward_status", nullable = false)
     @Builder.Default
-    private RewardStatus status = RewardStatus.PENDING;
+    private RewardStatus rewardStatus = RewardStatus.PENDING;
 
     @Column(name = "credited_at")
     private Instant creditedAt;
@@ -60,12 +62,4 @@ public class ReferralReward extends BaseEntity {
 
     @Column(name = "used_in_order_id")
     private UUID usedInOrderId;
-
-    public enum RewardType {
-        CASHBACK, DISCOUNT_COUPON, WALLET_CREDIT, POINTS
-    }
-
-    public enum RewardStatus {
-        PENDING, CREDITED, USED, EXPIRED, CANCELLED
-    }
 }

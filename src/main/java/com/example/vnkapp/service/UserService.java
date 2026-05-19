@@ -1,10 +1,10 @@
 package com.example.vnkapp.service;
 
-import com.example.vnkapp.dto.ForgotPasswordRequestDto;
-import com.example.vnkapp.dto.LoginResponseDto;
-import com.example.vnkapp.dto.ResetPasswordRequestDto;
-import com.example.vnkapp.dto.UserLoginRequestDto;
-import com.example.vnkapp.dto.UserRegisterRequestDto;
+import com.example.vnkapp.dto.user.ForgotPasswordRequestDto;
+import com.example.vnkapp.dto.user.LoginResponseDto;
+import com.example.vnkapp.dto.user.ResetPasswordRequestDto;
+import com.example.vnkapp.dto.user.UserLoginRequestDto;
+import com.example.vnkapp.dto.user.UserRegisterRequestDto;
 import com.example.vnkapp.entity.PasswordResetToken;
 import com.example.vnkapp.entity.User;
 import com.example.vnkapp.entity.UserSession;
@@ -35,7 +35,7 @@ public class UserService {
     @Value("${app.session.expiry-hours:24}")
     private int sessionExpiryHours;
 
-    @Value("${app.password-reset.expiry-minutes:15}")
+    @Value("${app.password-reset.expiry-minutes:5}")
     private int passwordResetExpiryMinutes;
 
     public UserService(UserRepository userRepository,
@@ -51,21 +51,35 @@ public class UserService {
     }
 
     @Transactional
-    public void register(UserRegisterRequestDto dto) {
-        if (userRepository.existsByEmail(dto.email())) {
+    public LoginResponseDto register(UserRegisterRequestDto registerRequestDto) {
+        if (userRepository.existsByEmail(registerRequestDto.email())) {
             throw new DataIntegrityViolationException("Email already in use");
         }
 
         User user = User.builder()
-                .username(dto.username())
-                .email(dto.email())
-                .password(passwordEncoder.encode(dto.password()))
+                .username(registerRequestDto.username())
+                .email(registerRequestDto.email())
+                .password(passwordEncoder.encode(registerRequestDto.password()))
                 .build();
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
         // Send welcome email asynchronously
         emailService.sendWelcomeEmail(user.getEmail(), user.getUsername());
+
+        // Auto-login: Create session and return token
+        String sessionToken = generateSessionToken();
+        Instant expiresAt = Instant.now().plus(sessionExpiryHours, ChronoUnit.HOURS);
+
+        UserSession session = UserSession.builder()
+                .userId(savedUser.getId())
+                .sessionToken(sessionToken)
+                .expiresAt(expiresAt)
+                .build();
+
+        userSessionRepository.save(session);
+
+        return new LoginResponseDto(sessionToken, expiresAt, sessionExpiryHours);
     }
 
     @Transactional

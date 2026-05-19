@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.user.DeviceType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -47,12 +48,4 @@ public class UserDevice extends BaseEntity {
 
     @Column(name = "app_version")
     private String appVersion;
-
-    @Column(name = "is_active", nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
-
-    public enum DeviceType {
-        ANDROID, IOS, WEB
-    }
 }

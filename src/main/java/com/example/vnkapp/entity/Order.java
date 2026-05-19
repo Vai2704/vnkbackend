@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.order.OrderStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,7 +21,7 @@ import java.util.UUID;
 @Table(name = "orders", indexes = {
     @Index(name = "idx_orders_user_id", columnList = "user_id"),
     @Index(name = "idx_orders_order_number", columnList = "order_number"),
-    @Index(name = "idx_orders_status", columnList = "status")
+    @Index(name = "idx_orders_status", columnList = "order_status")
 })
 @Getter
 @Setter
@@ -42,9 +43,9 @@ public class Order extends BaseEntity {
     private UUID couponId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "order_status", nullable = false)
     @Builder.Default
-    private OrderStatus status = OrderStatus.PENDING;
+    private OrderStatus orderStatus = OrderStatus.PENDING;
 
     @Column(name = "subtotal", nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
@@ -105,9 +106,4 @@ public class Order extends BaseEntity {
 
     @Column(name = "tracking_url")
     private String trackingUrl;
-
-    public enum OrderStatus {
-        PENDING, CONFIRMED, PROCESSING, SHIPPED, OUT_FOR_DELIVERY,
-        DELIVERED, CANCELLED, RETURNED, REFUNDED
-    }
 }

@@ -51,6 +51,17 @@ public class EmailService {
         mailSender.send(message);
     }
 
+    @Async
+    public void sendOrderConfirmation(String toEmail, String username, String orderNumber,
+                                       String totalAmount, String shippingAddress) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject(appName + " - Order Confirmation #" + orderNumber);
+        message.setText(buildOrderConfirmationBody(username, orderNumber, totalAmount, shippingAddress));
+        mailSender.send(message);
+    }
+
     private String buildWelcomeEmailBody(String username) {
         return String.format("""
             Hi %s,
@@ -99,5 +110,27 @@ public class EmailService {
             Best regards,
             The %s Team
             """, username, appName);
+    }
+
+    private String buildOrderConfirmationBody(String username, String orderNumber,
+                                               String totalAmount, String shippingAddress) {
+        return String.format("""
+            Hi %s,
+
+            Thank you for your order! We're pleased to confirm that we've received your order.
+
+            Order Number: %s
+            Total Amount: %s
+
+            Shipping Address:
+            %s
+
+            We'll send you another email once your order has been shipped.
+
+            If you have any questions about your order, please don't hesitate to contact us.
+
+            Best regards,
+            The %s Team
+            """, username, orderNumber, totalAmount, shippingAddress, appName);
     }
 }

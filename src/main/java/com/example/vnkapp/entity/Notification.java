@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.common.NotificationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -66,13 +67,4 @@ public class Notification extends BaseEntity {
 
     @Column(name = "push_sent_at")
     private Instant pushSentAt;
-
-    public enum NotificationType {
-        ORDER_PLACED, ORDER_CONFIRMED, ORDER_SHIPPED, ORDER_DELIVERED, ORDER_CANCELLED,
-        PAYMENT_SUCCESS, PAYMENT_FAILED, REFUND_INITIATED, REFUND_COMPLETED,
-        MEDICATION_REMINDER, MEDICATION_REFILL,
-        REFERRAL_SIGNUP, REFERRAL_REWARD,
-        PROMO, OFFER, GENERAL,
-        ACCOUNT_UPDATE, PASSWORD_CHANGED
-    }
 }

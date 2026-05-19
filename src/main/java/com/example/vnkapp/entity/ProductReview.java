@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.product.ReviewStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -45,9 +46,9 @@ public class ProductReview extends BaseEntity {
     private String comment;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "review_status", nullable = false)
     @Builder.Default
-    private ReviewStatus status = ReviewStatus.PENDING;
+    private ReviewStatus reviewStatus = ReviewStatus.PENDING;
 
     @Column(name = "is_verified_purchase", nullable = false)
     @Builder.Default
@@ -59,8 +60,4 @@ public class ProductReview extends BaseEntity {
 
     @Column(name = "admin_response", columnDefinition = "TEXT")
     private String adminResponse;
-
-    public enum ReviewStatus {
-        PENDING, APPROVED, REJECTED
-    }
 }

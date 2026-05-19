@@ -1,5 +1,7 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.payment.PaymentMethod;
+import com.example.vnkapp.enums.payment.PaymentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -46,9 +48,9 @@ public class Payment extends BaseEntity {
     private PaymentMethod paymentMethod;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "payment_status", nullable = false)
     @Builder.Default
-    private PaymentStatus status = PaymentStatus.PENDING;
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     @Column(name = "transaction_id")
     private String transactionId;
@@ -79,12 +81,4 @@ public class Payment extends BaseEntity {
 
     @Column(name = "refund_reason")
     private String refundReason;
-
-    public enum PaymentMethod {
-        CREDIT_CARD, DEBIT_CARD, UPI, NET_BANKING, WALLET, COD, RAZORPAY, STRIPE
-    }
-
-    public enum PaymentStatus {
-        PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED, PARTIALLY_REFUNDED
-    }
 }

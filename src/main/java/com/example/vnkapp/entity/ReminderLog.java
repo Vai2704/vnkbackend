@@ -1,5 +1,6 @@
 package com.example.vnkapp.entity;
 
+import com.example.vnkapp.enums.medication.ReminderStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,7 +23,7 @@ import java.util.UUID;
     @Index(name = "idx_reminder_logs_user_id", columnList = "user_id"),
     @Index(name = "idx_reminder_logs_user_medication_id", columnList = "user_medication_id"),
     @Index(name = "idx_reminder_logs_scheduled_date", columnList = "scheduled_date"),
-    @Index(name = "idx_reminder_logs_status", columnList = "status")
+    @Index(name = "idx_reminder_logs_status", columnList = "reminder_status")
 })
 @Getter
 @Setter
@@ -50,9 +51,9 @@ public class ReminderLog extends BaseEntity {
     private LocalTime scheduledTime;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "reminder_status", nullable = false)
     @Builder.Default
-    private ReminderStatus status = ReminderStatus.PENDING;
+    private ReminderStatus reminderStatus = ReminderStatus.PENDING;
 
     @Column(name = "taken_at")
     private Instant takenAt;
@@ -72,8 +73,4 @@ public class ReminderLog extends BaseEntity {
 
     @Column(name = "notes")
     private String notes;
-
-    public enum ReminderStatus {
-        PENDING, TAKEN, SKIPPED, MISSED, SNOOZED
-    }
 }

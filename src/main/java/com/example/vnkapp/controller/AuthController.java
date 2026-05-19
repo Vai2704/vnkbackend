@@ -1,12 +1,12 @@
 package com.example.vnkapp.controller;
 
-import com.example.vnkapp.dto.ApiResponseDto;
-import com.example.vnkapp.dto.ForgotPasswordRequestDto;
-import com.example.vnkapp.dto.LoginResponseDto;
-import com.example.vnkapp.dto.ResetPasswordRequestDto;
-import com.example.vnkapp.dto.UserLoginRequestDto;
-import com.example.vnkapp.dto.UserRegisterRequestDto;
-import com.example.vnkapp.dto.UserResponseDto;
+import com.example.vnkapp.dto.common.ApiResponseDto;
+import com.example.vnkapp.dto.user.ForgotPasswordRequestDto;
+import com.example.vnkapp.dto.user.LoginResponseDto;
+import com.example.vnkapp.dto.user.ResetPasswordRequestDto;
+import com.example.vnkapp.dto.user.UserLoginRequestDto;
+import com.example.vnkapp.dto.user.UserRegisterRequestDto;
+import com.example.vnkapp.dto.user.UserResponseDto;
 import com.example.vnkapp.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,11 +28,11 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponseDto> register(@Valid @RequestBody UserRegisterRequestDto request) {
+    public ResponseEntity<?> register(@Valid @RequestBody UserRegisterRequestDto request) {
         try {
-            userService.register(request);
+            LoginResponseDto loginResponse = userService.register(request);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(new UserResponseDto("Ok", null));
+                    .body(new ApiResponseDto<>("Ok", null, loginResponse));
         } catch (DataIntegrityViolationException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new UserResponseDto(null, "Email already in use."));
