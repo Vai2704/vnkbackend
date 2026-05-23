@@ -64,8 +64,8 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        // Send welcome email asynchronously
-        emailService.sendWelcomeEmail(user.getEmail(), user.getUsername());
+        // TODO: re-enable when SMTP credentials are configured in application.properties
+        // emailService.sendWelcomeEmail(user.getEmail(), user.getUsername());
 
         // Auto-login: Create session and return token
         String sessionToken = generateSessionToken();

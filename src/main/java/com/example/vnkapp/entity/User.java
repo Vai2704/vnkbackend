@@ -48,6 +48,10 @@ public class User extends BaseEntity {
     @Builder.Default
     private Boolean isPhoneVerified = false;
 
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean active = true;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
