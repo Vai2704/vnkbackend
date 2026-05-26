@@ -1,0 +1,65 @@
+{
+  "C:\\Users\\udbha\\OneDrive\\Desktop\\vaibhav\\vnkbackend\\serverless.containers.yml": {
+    "versionFramework": "4.36.1",
+    "servicePath": "C:\\Users\\udbha\\OneDrive\\Desktop\\vaibhav\\vnkbackend\\serverless.containers.yml",
+    "serviceConfigFileName": "serverless.containers.yml",
+    "service": {
+      "org": "vnksupplements",
+      "name": "vnk-backend",
+      "deployment": {
+        "type": "aws@1.0"
+      },
+      "containers": {
+        "service-sync": {
+          "src": "./",
+          "routing": {
+            "pathPattern": "/*",
+            "pathHealthCheck": "/health/check"
+          },
+          "compute": {
+            "type": "awsFargateEcs",
+            "awsFargateEcs": {
+              "memory": 4096,
+              "cpu": 2048,
+              "scale": [
+                {
+                  "type": "desired",
+                  "desired": 1
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "dashboard": {
+      "isEnabledForService": false,
+      "requiredAuthentication": false,
+      "orgFeaturesInUse": null,
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": null,
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "error": {
+      "message": "Docker build failed for \"service-sync\". Review Docker's build output above for details.",
+      "code": "KONTINUUM_ECR_CREATE_REPOOSITORY_FAILED"
+    },
+    "serviceRawFile": "org: vnksupplements\nname: vnk-backend\ndeployment:\n  type: aws@1.0\n\n\ncontainers:\n  service-sync:\n    src: ./\n    routing:\n      pathPattern: /*\n      pathHealthCheck: /health/check\n    compute:\n      type: awsFargateEcs\n      awsFargateEcs:\n        memory: 4096\n        cpu: 2048\n        scale:\n          - type: desired\n            desired: 1\n    \n",
+    "command": [
+      "deploy"
+    ],
+    "options": {
+      "stage": "vnk-staging"
+    },
+    "orgId": "ff2003f8-40a8-4877-87bb-7bba80584a74",
+    "orgName": "vnksupplements",
+    "userId": "4ZQQcNPfyy4Bq2HwTf",
+    "userName": "vnksupplements",
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}

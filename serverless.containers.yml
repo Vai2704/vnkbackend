@@ -1,0 +1,21 @@
+org: vnksupplements
+name: vnk-backend
+deployment:
+  type: aws@1.0
+
+
+containers:
+  service-sync:
+    src: ./
+    routing:
+      pathPattern: /*
+      pathHealthCheck: /health/check
+    compute:
+      type: awsFargateEcs
+      awsFargateEcs:
+        memory: 4096
+        cpu: 2048
+        scale:
+          - type: desired
+            desired: 1
+    

@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: vnkapp
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+app:
+  name: VNK App
+  session:
+    expiry-hours: 24
+  password-reset:
+    expiry-minutes: 15

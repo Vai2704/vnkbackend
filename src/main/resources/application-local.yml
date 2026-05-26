@@ -1,0 +1,13 @@
+# Local development (docker compose). Activate with SPRING_PROFILES_ACTIVE=local
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/vnkApp
+    username: postgres
+    password: root
+  jpa:
+    show-sql: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your-email@gmail.com
+    password: your-app-password

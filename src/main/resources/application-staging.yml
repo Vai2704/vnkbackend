@@ -1,0 +1,8 @@
+# AWS staging / Fargate deploy (profile: staging)
+spring:
+  datasource:
+    url: jdbc:postgresql://vnk-staging.cdesu2c0wyfn.ap-south-1.rds.amazonaws.com:5432/vnk_staging_db
+    username: postgres
+    password: vnkstaging25
+  jpa:
+    show-sql: false
