@@ -35,6 +35,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -50,7 +51,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
     private final UserRepository userRepository;
-    private final EmailService emailService;
+    private final Optional<EmailService> emailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public OrderService(OrderRepository orderRepository,
@@ -61,7 +62,7 @@ public class OrderService {
                         ProductRepository productRepository,
                         ProductImageRepository productImageRepository,
                         UserRepository userRepository,
-                        EmailService emailService) {
+                        Optional<EmailService> emailService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.cartRepository = cartRepository;
@@ -193,7 +194,7 @@ public class OrderService {
             cartItemRepository.save(cartItem);
         }
 
-        // 11. Send order confirmation email
+        // 11. Send order confirmation email (if email service is configured)
         User user = userRepository.findById(userId).orElse(null);
         if (user != null) {
             String shippingAddressFormatted = String.format("%s\n%s\n%s, %s %s\n%s",
@@ -204,13 +205,13 @@ public class OrderService {
                     savedOrder.getShippingPostalCode(),
                     savedOrder.getShippingCountry());
 
-            emailService.sendOrderConfirmation(
+            emailService.ifPresent(service -> service.sendOrderConfirmation(
                     user.getEmail(),
                     user.getUsername(),
                     orderNumber,
                     totalAmount.toString(),
                     shippingAddressFormatted
-            );
+            ));
         }
 
         // 12. Return order response

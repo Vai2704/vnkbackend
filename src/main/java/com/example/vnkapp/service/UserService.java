@@ -21,6 +21,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -29,7 +30,7 @@ public class UserService {
     private final UserSessionRepository userSessionRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
+    private final Optional<EmailService> emailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${app.session.expiry-hours:24}")
@@ -42,7 +43,7 @@ public class UserService {
                        UserSessionRepository userSessionRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
                        PasswordEncoder passwordEncoder,
-                       EmailService emailService) {
+                       Optional<EmailService> emailService) {
         this.userRepository = userRepository;
         this.userSessionRepository = userSessionRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
@@ -126,8 +127,8 @@ public class UserService {
 
         passwordResetTokenRepository.save(resetToken);
 
-        // Send reset code email asynchronously
-        emailService.sendPasswordResetCode(dto.email(), code);
+        // Send reset code email asynchronously (if email service is configured)
+        emailService.ifPresent(service -> service.sendPasswordResetCode(dto.email(), code));
     }
 
     @Transactional
@@ -152,8 +153,8 @@ public class UserService {
         resetToken.setUsedAt(Instant.now());
         passwordResetTokenRepository.save(resetToken);
 
-        // Send confirmation email asynchronously
-        emailService.sendPasswordResetSuccess(user.getEmail(), user.getUsername());
+        // Send confirmation email asynchronously (if email service is configured)
+        emailService.ifPresent(service -> service.sendPasswordResetSuccess(user.getEmail(), user.getUsername()));
     }
 
     private String generateSessionToken() {
