@@ -1,7 +1,7 @@
 # Local development (docker compose). Activate with SPRING_PROFILES_ACTIVE=local
 spring:
   datasource:
-    url: jdbc:postgresql://db:5432/vnkApp
+    url: jdbc:postgresql://localhost:5432/vnkApp
     username: postgres
     password: root
   jpa:
