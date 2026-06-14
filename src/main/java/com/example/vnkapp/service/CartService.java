@@ -51,13 +51,19 @@ public class CartService {
                     return cartRepository.save(newCart);
                 });
 
-        // Check if product already in cart
-        CartItem cartItem = cartItemRepository.findByCartIdAndProductIdActive(cart.getId(), dto.productId())
+        // Check if product already in cart (including soft-deleted)
+        CartItem cartItem = cartItemRepository.findByCartIdAndProductId(cart.getId(), dto.productId())
                 .orElse(null);
 
         if (cartItem != null) {
-            // Update quantity
-            cartItem.setQuantity(cartItem.getQuantity() + dto.quantity());
+            if (cartItem.getStatus().equals(BaseEntity.STATUS_ACTIVE)) {
+                // Update quantity for active item
+                cartItem.setQuantity(cartItem.getQuantity() + dto.quantity());
+            } else {
+                // Reactivate soft-deleted item
+                cartItem.setStatus(BaseEntity.STATUS_ACTIVE);
+                cartItem.setQuantity(dto.quantity());
+            }
             cartItem.setUnitPrice(product.getPrice());
             cartItemRepository.save(cartItem);
         } else {

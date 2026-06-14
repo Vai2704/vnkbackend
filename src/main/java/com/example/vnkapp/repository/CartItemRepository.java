@@ -21,4 +21,6 @@ public interface CartItemRepository extends JpaRepository<CartItem, UUID> {
     default Optional<CartItem> findByCartIdAndProductIdActive(UUID cartId, UUID productId) {
         return findByCartIdAndProductIdAndStatus(cartId, productId, BaseEntity.STATUS_ACTIVE);
     }
+
+    Optional<CartItem> findByCartIdAndProductId(UUID cartId, UUID productId);
 }
