@@ -6,6 +6,8 @@ import com.example.vnkapp.dto.family.FamilyMemberUpdateRequestDto;
 import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.FamilyMember;
 import com.example.vnkapp.repository.FamilyMemberRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +17,8 @@ import java.util.UUID;
 @Service
 public class FamilyMemberService {
 
+    private static final Logger log = LoggerFactory.getLogger(FamilyMemberService.class);
+
     private final FamilyMemberRepository familyMemberRepository;
 
     public FamilyMemberService(FamilyMemberRepository familyMemberRepository) {
@@ -23,6 +27,7 @@ public class FamilyMemberService {
 
     @Transactional
     public FamilyMemberResponseDto addFamilyMember(UUID userId, FamilyMemberCreateRequestDto dto) {
+        log.debug("Adding family member for user: {}, name: {}", userId, dto.name());
         FamilyMember familyMember = FamilyMember.builder()
                 .userId(userId)
                 .name(dto.name())
@@ -38,13 +43,18 @@ public class FamilyMemberService {
                 .build();
 
         FamilyMember savedMember = familyMemberRepository.save(familyMember);
+        log.info("Family member added: {} for user: {}", savedMember.getId(), userId);
         return FamilyMemberResponseDto.fromEntity(savedMember);
     }
 
     @Transactional
     public FamilyMemberResponseDto updateFamilyMember(UUID userId, UUID memberId, FamilyMemberUpdateRequestDto dto) {
+        log.debug("Updating family member {} for user: {}", memberId, userId);
         FamilyMember familyMember = familyMemberRepository.findByIdAndUserIdActive(memberId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Family member not found"));
+                .orElseThrow(() -> {
+                    log.warn("Family member {} not found for user: {}", memberId, userId);
+                    return new IllegalArgumentException("Family member not found");
+                });
 
         if (dto.name() != null && !dto.name().isBlank()) {
             familyMember.setName(dto.name());
@@ -87,21 +97,28 @@ public class FamilyMemberService {
         }
 
         FamilyMember updatedMember = familyMemberRepository.save(familyMember);
+        log.info("Family member updated: {}", memberId);
         return FamilyMemberResponseDto.fromEntity(updatedMember);
     }
 
     @Transactional
     public void deleteFamilyMember(UUID userId, UUID memberId) {
+        log.debug("Deleting family member {} for user: {}", memberId, userId);
         FamilyMember familyMember = familyMemberRepository.findByIdAndUserIdActive(memberId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Family member not found"));
+                .orElseThrow(() -> {
+                    log.warn("Family member {} not found for user: {}", memberId, userId);
+                    return new IllegalArgumentException("Family member not found");
+                });
 
         // Soft delete
         familyMember.setStatus(BaseEntity.STATUS_INACTIVE);
         familyMemberRepository.save(familyMember);
+        log.info("Family member deleted: {}", memberId);
     }
 
     @Transactional(readOnly = true)
     public List<FamilyMemberResponseDto> getAllFamilyMembers(UUID userId) {
+        log.debug("Fetching all family members for user: {}", userId);
         return familyMemberRepository.findByUserIdActive(userId)
                 .stream()
                 .map(FamilyMemberResponseDto::fromEntity)
@@ -110,8 +127,12 @@ public class FamilyMemberService {
 
     @Transactional(readOnly = true)
     public FamilyMemberResponseDto getFamilyMember(UUID userId, UUID memberId) {
+        log.debug("Fetching family member {} for user: {}", memberId, userId);
         FamilyMember familyMember = familyMemberRepository.findByIdAndUserIdActive(memberId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Family member not found"));
+                .orElseThrow(() -> {
+                    log.warn("Family member {} not found for user: {}", memberId, userId);
+                    return new IllegalArgumentException("Family member not found");
+                });
 
         return FamilyMemberResponseDto.fromEntity(familyMember);
     }

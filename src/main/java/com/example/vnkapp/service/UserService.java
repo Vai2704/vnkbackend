@@ -11,6 +11,8 @@ import com.example.vnkapp.entity.UserSession;
 import com.example.vnkapp.repository.PasswordResetTokenRepository;
 import com.example.vnkapp.repository.UserRepository;
 import com.example.vnkapp.repository.UserSessionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +27,8 @@ import java.util.Optional;
 
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
     private final UserSessionRepository userSessionRepository;
@@ -53,7 +57,9 @@ public class UserService {
 
     @Transactional
     public LoginResponseDto register(UserRegisterRequestDto registerRequestDto) {
+        log.debug("Registering user: {}", registerRequestDto.email());
         if (userRepository.existsByEmail(registerRequestDto.email())) {
+            log.warn("Registration failed - email already in use: {}", registerRequestDto.email());
             throw new DataIntegrityViolationException("Email already in use");
         }
 
@@ -64,6 +70,7 @@ public class UserService {
                 .build();
 
         User savedUser = userRepository.save(user);
+        log.info("User registered successfully: {}", savedUser.getId());
 
         // TODO: re-enable when SMTP credentials are configured in application.properties
         // emailService.sendWelcomeEmail(user.getEmail(), user.getUsername());
@@ -85,10 +92,15 @@ public class UserService {
 
     @Transactional
     public LoginResponseDto login(UserLoginRequestDto dto) {
+        log.debug("Login attempt for: {}", dto.email());
         User user = userRepository.findByEmail(dto.email())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+                .orElseThrow(() -> {
+                    log.warn("Login failed - user not found: {}", dto.email());
+                    return new IllegalArgumentException("Invalid email or password");
+                });
 
         if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
+            log.warn("Login failed - wrong password for: {}", dto.email());
             throw new IllegalArgumentException("Invalid email or password");
         }
 
@@ -102,14 +114,19 @@ public class UserService {
                 .build();
 
         userSessionRepository.save(session);
+        log.info("User logged in: {}", user.getId());
 
         return new LoginResponseDto(sessionToken, expiresAt, sessionExpiryHours);
     }
 
     @Transactional
     public void forgotPassword(ForgotPasswordRequestDto dto) {
+        log.debug("Forgot password for: {}", dto.email());
         User user = userRepository.findByEmail(dto.email())
-                .orElseThrow(() -> new IllegalArgumentException("No account found with this email"));
+                .orElseThrow(() -> {
+                    log.warn("Forgot password - user not found: {}", dto.email());
+                    return new IllegalArgumentException("No account found with this email");
+                });
 
         // Invalidate any existing reset tokens for this email
         passwordResetTokenRepository.invalidateAllTokensForEmail(dto.email());
@@ -126,6 +143,7 @@ public class UserService {
                 .build();
 
         passwordResetTokenRepository.save(resetToken);
+        log.info("Password reset code generated for user: {}", user.getId());
 
         // Send reset code email asynchronously (if email service is configured)
         emailService.ifPresent(service -> service.sendPasswordResetCode(dto.email(), code));
@@ -133,11 +151,16 @@ public class UserService {
 
     @Transactional
     public void resetPassword(ResetPasswordRequestDto dto) {
+        log.debug("Reset password for: {}", dto.email());
         PasswordResetToken resetToken = passwordResetTokenRepository
                 .findByEmailAndCodeAndIsUsedFalse(dto.email(), dto.code())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired reset code"));
+                .orElseThrow(() -> {
+                    log.warn("Reset password - invalid or expired code for: {}", dto.email());
+                    return new IllegalArgumentException("Invalid or expired reset code");
+                });
 
         if (!resetToken.isValid()) {
+            log.warn("Reset password - code expired for: {}", dto.email());
             throw new IllegalArgumentException("Reset code has expired");
         }
 
@@ -152,6 +175,8 @@ public class UserService {
         resetToken.setIsUsed(true);
         resetToken.setUsedAt(Instant.now());
         passwordResetTokenRepository.save(resetToken);
+
+        log.info("Password reset successful for user: {}", user.getId());
 
         // Send confirmation email asynchronously (if email service is configured)
         emailService.ifPresent(service -> service.sendPasswordResetSuccess(user.getEmail(), user.getUsername()));

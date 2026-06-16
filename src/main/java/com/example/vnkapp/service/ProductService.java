@@ -7,6 +7,8 @@ import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.Product;
 import com.example.vnkapp.repository.ProductCategoryRepository;
 import com.example.vnkapp.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,8 @@ import java.util.regex.Pattern;
 @Service
 public class ProductService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductService.class);
+
     private final ProductRepository productRepository;
     private final ProductCategoryRepository productCategoryRepository;
 
@@ -37,13 +41,18 @@ public class ProductService {
 
     @Transactional
     public ProductResponseDto createProduct(ProductCreateRequestDto dto) {
+        log.debug("Creating product: {}, sku: {}", dto.name(), dto.sku());
         // Validate that category exists
         if (dto.categoryId() == null) {
+            log.warn("Create product failed - no categoryId provided");
             throw new IllegalArgumentException("Please provide category of the product");
         }
 
         productCategoryRepository.findByIdAndStatusActive(dto.categoryId())
-                .orElseThrow(() -> new IllegalArgumentException("Please provide category of the product. Category not found with ID: " + dto.categoryId()));
+                .orElseThrow(() -> {
+                    log.warn("Category not found: {}", dto.categoryId());
+                    return new IllegalArgumentException("Please provide category of the product. Category not found with ID: " + dto.categoryId());
+                });
 
         // Generate slug from name
         String slug = generateSlug(dto.name());
@@ -55,6 +64,7 @@ public class ProductService {
 
         // Check for duplicate SKU
         if (productRepository.existsBySku(dto.sku())) {
+            log.warn("Duplicate SKU: {}", dto.sku());
             throw new IllegalArgumentException("SKU already exists: " + dto.sku());
         }
 
@@ -80,19 +90,27 @@ public class ProductService {
                 .build();
 
         Product savedProduct = productRepository.save(product);
+        log.info("Product created: {}, sku: {}", savedProduct.getId(), dto.sku());
         return ProductResponseDto.fromEntity(savedProduct);
     }
 
     @Transactional
     public ProductResponseDto updateProduct(UUID productId, ProductUpdateRequestDto dto) {
+        log.debug("Updating product: {}", productId);
         Product product = productRepository.findByIdAndStatusActive(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+                .orElseThrow(() -> {
+                    log.warn("Product not found: {}", productId);
+                    return new IllegalArgumentException("Product not found");
+                });
 
         // Update fields if provided
         if (dto.categoryId() != null) {
             // Validate that the new category exists
             productCategoryRepository.findByIdAndStatusActive(dto.categoryId())
-                    .orElseThrow(() -> new IllegalArgumentException("Please provide a valid category. Category not found with ID: " + dto.categoryId()));
+                    .orElseThrow(() -> {
+                        log.warn("Category not found: {}", dto.categoryId());
+                        return new IllegalArgumentException("Please provide a valid category. Category not found with ID: " + dto.categoryId());
+                    });
             product.setCategoryId(dto.categoryId());
         }
 
@@ -110,6 +128,7 @@ public class ProductService {
 
         if (dto.sku() != null && !dto.sku().isBlank()) {
             if (!dto.sku().equals(product.getSku()) && productRepository.existsBySkuAndIdNot(dto.sku(), productId)) {
+                log.warn("Duplicate SKU {} for product: {}", dto.sku(), productId);
                 throw new IllegalArgumentException("SKU already exists: " + dto.sku());
             }
             product.setSku(dto.sku());
@@ -172,29 +191,40 @@ public class ProductService {
         }
 
         Product updatedProduct = productRepository.save(product);
+        log.info("Product updated: {}", productId);
         return ProductResponseDto.fromEntity(updatedProduct);
     }
 
     @Transactional
     public void deleteProduct(UUID productId) {
+        log.debug("Deleting product: {}", productId);
         Product product = productRepository.findByIdAndStatusActive(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+                .orElseThrow(() -> {
+                    log.warn("Product not found: {}", productId);
+                    return new IllegalArgumentException("Product not found");
+                });
 
         // Soft delete - set status to inactive
         product.setStatus(BaseEntity.STATUS_INACTIVE);
         productRepository.save(product);
+        log.info("Product deleted: {}", productId);
     }
 
     @Transactional(readOnly = true)
     public ProductResponseDto getProduct(UUID productId) {
+        log.debug("Fetching product: {}", productId);
         Product product = productRepository.findByIdAndStatusActive(productId)
-                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+                .orElseThrow(() -> {
+                    log.warn("Product not found: {}", productId);
+                    return new IllegalArgumentException("Product not found");
+                });
 
         return ProductResponseDto.fromEntity(product);
     }
 
     @Transactional(readOnly = true)
     public List<ProductResponseDto> getAllProducts() {
+        log.debug("Fetching all products");
         return productRepository.findAllActive()
                 .stream()
                 .map(ProductResponseDto::fromEntity)
@@ -203,6 +233,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<ProductResponseDto> getAllProductsPaginated(int page, int size, String sortBy, String sortDir) {
+        log.debug("Fetching products page: {}, size: {}, sortBy: {}", page, size, sortBy);
         Sort sort = sortDir.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
@@ -214,6 +245,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponseDto> getProductsByCategory(UUID categoryId) {
+        log.debug("Fetching products for category: {}", categoryId);
         return productRepository.findByCategoryIdActive(categoryId)
                 .stream()
                 .map(ProductResponseDto::fromEntity)

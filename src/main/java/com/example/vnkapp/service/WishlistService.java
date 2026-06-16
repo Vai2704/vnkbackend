@@ -8,6 +8,8 @@ import com.example.vnkapp.entity.Product;
 import com.example.vnkapp.entity.Wishlist;
 import com.example.vnkapp.repository.ProductRepository;
 import com.example.vnkapp.repository.WishlistRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 @Service
 public class WishlistService {
 
+    private static final Logger log = LoggerFactory.getLogger(WishlistService.class);
+
     private final WishlistRepository wishlistRepository;
     private final ProductRepository productRepository;
 
@@ -31,12 +35,17 @@ public class WishlistService {
 
     @Transactional
     public WishlistResponseDto addToWishlist(UUID userId, AddToWishlistRequestDto dto) {
+        log.debug("Adding product {} to wishlist for user: {}", dto.productId(), userId);
         // Validate product exists
         productRepository.findByIdAndStatusActive(dto.productId())
-                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+                .orElseThrow(() -> {
+                    log.warn("Product not found: {}", dto.productId());
+                    return new IllegalArgumentException("Product not found");
+                });
 
         // Check if already in wishlist
         if (wishlistRepository.existsByUserIdAndProductIdActive(userId, dto.productId())) {
+            log.warn("Product {} already in wishlist for user: {}", dto.productId(), userId);
             throw new IllegalArgumentException("Product already in wishlist");
         }
 
@@ -46,12 +55,14 @@ public class WishlistService {
                 .productId(dto.productId())
                 .build();
         wishlistRepository.save(wishlist);
+        log.info("Product {} added to wishlist for user: {}", dto.productId(), userId);
 
         return getWishlist(userId);
     }
 
     @Transactional(readOnly = true)
     public WishlistResponseDto getWishlist(UUID userId) {
+        log.debug("Fetching wishlist for user: {}", userId);
         List<Wishlist> wishlistItems = wishlistRepository.findByUserIdActive(userId);
 
         if (wishlistItems.isEmpty()) {
@@ -87,13 +98,18 @@ public class WishlistService {
 
     @Transactional
     public WishlistResponseDto removeFromWishlist(UUID userId, UUID wishlistItemId) {
+        log.debug("Removing wishlist item {} for user: {}", wishlistItemId, userId);
         Wishlist wishlistItem = wishlistRepository.findById(wishlistItemId)
                 .filter(item -> item.getUserId().equals(userId) && item.getStatus().equals(BaseEntity.STATUS_ACTIVE))
-                .orElseThrow(() -> new IllegalArgumentException("Wishlist item not found"));
+                .orElseThrow(() -> {
+                    log.warn("Wishlist item {} not found for user: {}", wishlistItemId, userId);
+                    return new IllegalArgumentException("Wishlist item not found");
+                });
 
         // Soft delete
         wishlistItem.setStatus(BaseEntity.STATUS_INACTIVE);
         wishlistRepository.save(wishlistItem);
+        log.info("Wishlist item {} removed for user: {}", wishlistItemId, userId);
 
         return getWishlist(userId);
     }

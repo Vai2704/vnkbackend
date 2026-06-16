@@ -7,6 +7,8 @@ import com.example.vnkapp.dto.product.ProductUpdateRequestDto;
 import com.example.vnkapp.dto.user.UserResponseDto;
 import com.example.vnkapp.service.ProductService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +29,8 @@ import java.util.UUID;
 @RequestMapping("/api/products")
 public class ProductController {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductController.class);
+
     private final ProductService productService;
 
     public ProductController(ProductService productService) {
@@ -35,14 +39,17 @@ public class ProductController {
 
     @PostMapping
     public ResponseEntity<?> createProduct(@Valid @RequestBody ProductCreateRequestDto request) {
+        log.info("Create product request: {}, sku: {}", request.name(), request.sku());
         try {
             ProductResponseDto product = productService.createProduct(request);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponseDto<>("Ok", null, product));
         } catch (IllegalArgumentException ex) {
+            log.warn("Create product failed: {}", ex.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new UserResponseDto(null, ex.getMessage()));
         } catch (Exception ex) {
+            log.error("Create product error for: {}", request.name(), ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new UserResponseDto(null, "Can't create product due to some issue."));
         }
@@ -52,13 +59,16 @@ public class ProductController {
     public ResponseEntity<?> updateProduct(
             @PathVariable UUID id,
             @Valid @RequestBody ProductUpdateRequestDto request) {
+        log.info("Update product: {}", id);
         try {
             ProductResponseDto product = productService.updateProduct(id, request);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, product));
         } catch (IllegalArgumentException ex) {
+            log.warn("Update product {} failed: {}", id, ex.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new UserResponseDto(null, ex.getMessage()));
         } catch (Exception ex) {
+            log.error("Update product {} error", id, ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new UserResponseDto(null, "Can't update product due to some issue."));
         }
@@ -66,13 +76,16 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteProduct(@PathVariable UUID id) {
+        log.info("Delete product: {}", id);
         try {
             productService.deleteProduct(id);
             return ResponseEntity.ok(new UserResponseDto("Ok", null));
         } catch (IllegalArgumentException ex) {
+            log.warn("Delete product {} failed: {}", id, ex.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new UserResponseDto(null, ex.getMessage()));
         } catch (Exception ex) {
+            log.error("Delete product {} error", id, ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new UserResponseDto(null, "Can't delete product due to some issue."));
         }
@@ -80,13 +93,16 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getProduct(@PathVariable UUID id) {
+        log.info("Get product: {}", id);
         try {
             ProductResponseDto product = productService.getProduct(id);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, product));
         } catch (IllegalArgumentException ex) {
+            log.warn("Product not found: {}", id);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new UserResponseDto(null, ex.getMessage()));
         } catch (Exception ex) {
+            log.error("Get product {} error", id, ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new UserResponseDto(null, "Can't fetch product due to some issue."));
         }
@@ -98,10 +114,12 @@ public class ProductController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
+        log.info("Get all products, page: {}, size: {}, sortBy: {}", page, size, sortBy);
         try {
             Page<ProductResponseDto> products = productService.getAllProductsPaginated(page, size, sortBy, sortDir);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, products));
         } catch (Exception ex) {
+            log.error("Get all products error", ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new UserResponseDto(null, "Can't fetch products due to some issue."));
         }
@@ -109,10 +127,12 @@ public class ProductController {
 
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<?> getProductsByCategory(@PathVariable UUID categoryId) {
+        log.info("Get products for category: {}", categoryId);
         try {
             List<ProductResponseDto> products = productService.getProductsByCategory(categoryId);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, products));
         } catch (Exception ex) {
+            log.error("Get products by category {} error", categoryId, ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new UserResponseDto(null, "Can't fetch products due to some issue."));
         }
