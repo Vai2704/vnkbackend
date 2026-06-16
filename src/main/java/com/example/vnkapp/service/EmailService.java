@@ -1,5 +1,7 @@
 package com.example.vnkapp.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.mail.SimpleMailMessage;
@@ -10,6 +12,8 @@ import org.springframework.stereotype.Service;
 @Service
 @ConditionalOnProperty(name = "spring.mail.host")
 public class EmailService {
+
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
     private final JavaMailSender mailSender;
 
@@ -25,43 +29,51 @@ public class EmailService {
 
     @Async
     public void sendWelcomeEmail(String toEmail, String username) {
+        log.info("Sending welcome email to: {}", toEmail);
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
         message.setSubject("Welcome to " + appName + "!");
         message.setText(buildWelcomeEmailBody(username));
         mailSender.send(message);
+        log.debug("Welcome email sent to: {}", toEmail);
     }
 
     @Async
     public void sendPasswordResetCode(String toEmail, String code) {
+        log.info("Sending password reset code to: {}", toEmail);
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
         message.setSubject(appName + " - Password Reset Code");
         message.setText(buildPasswordResetEmailBody(code));
         mailSender.send(message);
+        log.debug("Password reset code email sent to: {}", toEmail);
     }
 
     @Async
     public void sendPasswordResetSuccess(String toEmail, String username) {
+        log.info("Sending password reset success email to: {}", toEmail);
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
         message.setSubject(appName + " - Password Changed Successfully");
         message.setText(buildPasswordResetSuccessBody(username));
         mailSender.send(message);
+        log.debug("Password reset success email sent to: {}", toEmail);
     }
 
     @Async
     public void sendOrderConfirmation(String toEmail, String username, String orderNumber,
                                        String totalAmount, String shippingAddress) {
+        log.info("Sending order confirmation {} to: {}", orderNumber, toEmail);
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
         message.setSubject(appName + " - Order Confirmation #" + orderNumber);
         message.setText(buildOrderConfirmationBody(username, orderNumber, totalAmount, shippingAddress));
         mailSender.send(message);
+        log.debug("Order confirmation email sent for order: {} to: {}", orderNumber, toEmail);
     }
 
     private String buildWelcomeEmailBody(String username) {

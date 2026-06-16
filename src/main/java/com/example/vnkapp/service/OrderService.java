@@ -22,6 +22,8 @@ import com.example.vnkapp.repository.OrderRepository;
 import com.example.vnkapp.repository.ProductImageRepository;
 import com.example.vnkapp.repository.ProductRepository;
 import com.example.vnkapp.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +44,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
@@ -76,19 +80,29 @@ public class OrderService {
 
     @Transactional
     public OrderResponseDto placeOrder(UUID userId, PlaceOrderRequestDto dto) {
+        log.info("Placing order for user: {}, addressId: {}", userId, dto.addressId());
+
         // 1. Validate address belongs to user
         Address address = addressRepository.findByIdAndUserIdActive(dto.addressId(), userId)
-                .orElseThrow(() -> new IllegalArgumentException("Address not found"));
+                .orElseThrow(() -> {
+                    log.warn("Address {} not found for user: {}", dto.addressId(), userId);
+                    return new IllegalArgumentException("Address not found");
+                });
 
         // 2. Get user's cart
         var cart = cartRepository.findByUserIdActive(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Cart is empty"));
+                .orElseThrow(() -> {
+                    log.warn("Cart is empty for user: {}", userId);
+                    return new IllegalArgumentException("Cart is empty");
+                });
 
         // 3. Get cart items
         List<CartItem> cartItems = cartItemRepository.findByCartIdActive(cart.getId());
         if (cartItems.isEmpty()) {
+            log.warn("Cart has no items for user: {}", userId);
             throw new IllegalArgumentException("Cart is empty");
         }
+        log.debug("Processing {} cart items for user: {}", cartItems.size(), userId);
 
         // 4. Fetch all products and their primary images
         List<UUID> productIds = cartItems.stream()
@@ -108,9 +122,12 @@ public class OrderService {
         for (CartItem cartItem : cartItems) {
             Product product = productMap.get(cartItem.getProductId());
             if (product == null || product.getStatus().equals(BaseEntity.STATUS_INACTIVE)) {
+                log.warn("Product not available: {}", cartItem.getProductId());
                 throw new IllegalArgumentException("Product not available: " + cartItem.getProductId());
             }
             if (product.getStockQuantity() < cartItem.getQuantity()) {
+                log.warn("Insufficient stock for product: {}, available: {}, requested: {}",
+                        product.getName(), product.getStockQuantity(), cartItem.getQuantity());
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
         }
@@ -164,6 +181,7 @@ public class OrderService {
                 .build();
 
         Order savedOrder = orderRepository.save(order);
+        log.info("Order created: {}, orderNumber: {}, total: {}", savedOrder.getId(), orderNumber, totalAmount);
 
         // 9. Create order items and update product stock
         for (CartItem cartItem : cartItems) {
@@ -186,6 +204,7 @@ public class OrderService {
             // Update stock
             product.setStockQuantity(product.getStockQuantity() - cartItem.getQuantity());
             productRepository.save(product);
+            log.debug("Stock updated for product: {}, remaining: {}", product.getId(), product.getStockQuantity());
         }
 
         // 10. Clear cart (soft delete cart items)
@@ -193,6 +212,7 @@ public class OrderService {
             cartItem.setStatus(BaseEntity.STATUS_INACTIVE);
             cartItemRepository.save(cartItem);
         }
+        log.debug("Cart cleared for user: {}", userId);
 
         // 11. Send order confirmation email (if email service is configured)
         User user = userRepository.findById(userId).orElse(null);
@@ -221,6 +241,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public Page<OrderSummaryResponseDto> getUserOrders(UUID userId, OrderStatus orderStatus,
                                                         int page, int size) {
+        log.debug("Fetching orders for user: {}, status: {}, page: {}", userId, orderStatus, page);
         Pageable pageable = PageRequest.of(page, size);
 
         Page<Order> orders;
@@ -239,8 +260,12 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderResponseDto getOrderDetails(UUID userId, UUID orderId) {
+        log.debug("Fetching order {} for user: {}", orderId, userId);
         Order order = orderRepository.findByIdAndUserIdActive(orderId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+                .orElseThrow(() -> {
+                    log.warn("Order {} not found for user: {}", orderId, userId);
+                    return new IllegalArgumentException("Order not found");
+                });
 
         List<OrderItem> orderItems = orderItemRepository.findByOrderIdActive(order.getId());
 
@@ -253,12 +278,17 @@ public class OrderService {
 
     @Transactional
     public OrderResponseDto cancelOrder(UUID userId, UUID orderId, CancelOrderRequestDto dto) {
+        log.info("Cancelling order {} for user: {}", orderId, userId);
         Order order = orderRepository.findByIdAndUserIdActive(orderId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
+                .orElseThrow(() -> {
+                    log.warn("Order {} not found for user: {}", orderId, userId);
+                    return new IllegalArgumentException("Order not found");
+                });
 
         // Only PENDING or CONFIRMED orders can be cancelled
         if (order.getOrderStatus() != OrderStatus.PENDING &&
             order.getOrderStatus() != OrderStatus.CONFIRMED) {
+            log.warn("Cannot cancel order {} - current status: {}", orderId, order.getOrderStatus());
             throw new IllegalArgumentException(
                     "Order cannot be cancelled. Current status: " + order.getOrderStatus());
         }
@@ -268,6 +298,7 @@ public class OrderService {
         order.setCancellationReason(dto.reason());
         order.setCancelledAt(Instant.now());
         orderRepository.save(order);
+        log.info("Order {} cancelled, reason: {}", orderId, dto.reason());
 
         // Restore product stock
         List<OrderItem> orderItems = orderItemRepository.findByOrderIdActive(order.getId());
@@ -276,6 +307,7 @@ public class OrderService {
             if (product != null) {
                 product.setStockQuantity(product.getStockQuantity() + orderItem.getQuantity());
                 productRepository.save(product);
+                log.debug("Stock restored for product: {}, quantity: {}", product.getId(), orderItem.getQuantity());
             }
         }
 

@@ -7,6 +7,8 @@ import com.example.vnkapp.entity.Address;
 import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.enums.common.AddressType;
 import com.example.vnkapp.repository.AddressRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,8 @@ import java.util.UUID;
 @Service
 public class AddressService {
 
+    private static final Logger log = LoggerFactory.getLogger(AddressService.class);
+
     private final AddressRepository addressRepository;
 
     public AddressService(AddressRepository addressRepository) {
@@ -24,6 +28,7 @@ public class AddressService {
 
     @Transactional
     public AddressResponseDto addAddress(UUID userId, AddressCreateRequestDto dto) {
+        log.debug("Adding address for user: {}", userId);
         // If this is set as default, clear other defaults
         boolean isDefault = dto.isDefault() != null && dto.isDefault();
         if (isDefault) {
@@ -54,13 +59,18 @@ public class AddressService {
                 .build();
 
         Address savedAddress = addressRepository.save(address);
+        log.info("Address added for user: {}, addressId: {}", userId, savedAddress.getId());
         return AddressResponseDto.fromEntity(savedAddress);
     }
 
     @Transactional
     public AddressResponseDto updateAddress(UUID userId, UUID addressId, AddressUpdateRequestDto dto) {
+        log.debug("Updating address {} for user: {}", addressId, userId);
         Address address = addressRepository.findByIdAndUserIdActive(addressId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Address not found"));
+                .orElseThrow(() -> {
+                    log.warn("Address {} not found for user: {}", addressId, userId);
+                    return new IllegalArgumentException("Address not found");
+                });
 
         // If setting as default, clear other defaults
         if (dto.isDefault() != null && dto.isDefault() && !address.getIsDefault()) {
@@ -117,19 +127,25 @@ public class AddressService {
         }
 
         Address updatedAddress = addressRepository.save(address);
+        log.info("Address updated: {}", addressId);
         return AddressResponseDto.fromEntity(updatedAddress);
     }
 
     @Transactional
     public void deleteAddress(UUID userId, UUID addressId) {
+        log.debug("Deleting address {} for user: {}", addressId, userId);
         Address address = addressRepository.findByIdAndUserIdActive(addressId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Address not found"));
+                .orElseThrow(() -> {
+                    log.warn("Address {} not found for user: {}", addressId, userId);
+                    return new IllegalArgumentException("Address not found");
+                });
 
         boolean wasDefault = address.getIsDefault();
 
         // Soft delete
         address.setStatus(BaseEntity.STATUS_INACTIVE);
         addressRepository.save(address);
+        log.info("Address deleted: {}", addressId);
 
         // If deleted address was default, set another as default
         if (wasDefault) {
@@ -138,12 +154,14 @@ public class AddressService {
                 Address newDefault = remainingAddresses.get(0);
                 newDefault.setIsDefault(true);
                 addressRepository.save(newDefault);
+                log.info("New default address set: {} for user: {}", newDefault.getId(), userId);
             }
         }
     }
 
     @Transactional(readOnly = true)
     public List<AddressResponseDto> getAllAddresses(UUID userId) {
+        log.debug("Fetching all addresses for user: {}", userId);
         return addressRepository.findByUserIdActive(userId)
                 .stream()
                 .map(AddressResponseDto::fromEntity)
@@ -152,8 +170,12 @@ public class AddressService {
 
     @Transactional(readOnly = true)
     public AddressResponseDto getAddress(UUID userId, UUID addressId) {
+        log.debug("Fetching address {} for user: {}", addressId, userId);
         Address address = addressRepository.findByIdAndUserIdActive(addressId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Address not found"));
+                .orElseThrow(() -> {
+                    log.warn("Address {} not found for user: {}", addressId, userId);
+                    return new IllegalArgumentException("Address not found");
+                });
 
         return AddressResponseDto.fromEntity(address);
     }

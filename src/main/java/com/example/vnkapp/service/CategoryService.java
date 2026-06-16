@@ -6,6 +6,8 @@ import com.example.vnkapp.dto.category.CategoryUpdateRequestDto;
 import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.ProductCategory;
 import com.example.vnkapp.repository.ProductCategoryRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,8 @@ import java.util.regex.Pattern;
 @Service
 public class CategoryService {
 
+    private static final Logger log = LoggerFactory.getLogger(CategoryService.class);
+
     private final ProductCategoryRepository categoryRepository;
 
     private static final Pattern NON_LATIN = Pattern.compile("[^\\w-]");
@@ -29,6 +33,7 @@ public class CategoryService {
 
     @Transactional
     public CategoryResponseDto createCategory(CategoryCreateRequestDto dto) {
+        log.debug("Creating category: {}", dto.name());
         // Generate slug from name
         String slug = generateSlug(dto.name());
 
@@ -40,7 +45,10 @@ public class CategoryService {
         // Validate parent exists if provided
         if (dto.parentId() != null) {
             categoryRepository.findByIdAndStatusActive(dto.parentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Parent category not found"));
+                    .orElseThrow(() -> {
+                        log.warn("Parent category not found: {}", dto.parentId());
+                        return new IllegalArgumentException("Parent category not found");
+                    });
         }
 
         ProductCategory category = ProductCategory.builder()
@@ -54,13 +62,18 @@ public class CategoryService {
                 .build();
 
         ProductCategory savedCategory = categoryRepository.save(category);
+        log.info("Category created: {}, slug: {}", savedCategory.getId(), slug);
         return CategoryResponseDto.fromEntity(savedCategory);
     }
 
     @Transactional
     public CategoryResponseDto updateCategory(UUID categoryId, CategoryUpdateRequestDto dto) {
+        log.debug("Updating category: {}", categoryId);
         ProductCategory category = categoryRepository.findByIdAndStatusActive(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+                .orElseThrow(() -> {
+                    log.warn("Category not found: {}", categoryId);
+                    return new IllegalArgumentException("Category not found");
+                });
 
         if (dto.name() != null && !dto.name().isBlank()) {
             category.setName(dto.name());
@@ -85,10 +98,14 @@ public class CategoryService {
         if (dto.parentId() != null) {
             // Validate parent exists and is not self
             if (dto.parentId().equals(categoryId)) {
+                log.warn("Category {} cannot be its own parent", categoryId);
                 throw new IllegalArgumentException("Category cannot be its own parent");
             }
             categoryRepository.findByIdAndStatusActive(dto.parentId())
-                    .orElseThrow(() -> new IllegalArgumentException("Parent category not found"));
+                    .orElseThrow(() -> {
+                        log.warn("Parent category not found: {}", dto.parentId());
+                        return new IllegalArgumentException("Parent category not found");
+                    });
             category.setParentId(dto.parentId());
         }
 
@@ -101,29 +118,40 @@ public class CategoryService {
         }
 
         ProductCategory updatedCategory = categoryRepository.save(category);
+        log.info("Category updated: {}", categoryId);
         return CategoryResponseDto.fromEntity(updatedCategory);
     }
 
     @Transactional
     public void deleteCategory(UUID categoryId) {
+        log.debug("Deleting category: {}", categoryId);
         ProductCategory category = categoryRepository.findByIdAndStatusActive(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+                .orElseThrow(() -> {
+                    log.warn("Category not found: {}", categoryId);
+                    return new IllegalArgumentException("Category not found");
+                });
 
         // Soft delete - set status to inactive
         category.setStatus(BaseEntity.STATUS_INACTIVE);
         categoryRepository.save(category);
+        log.info("Category deleted: {}", categoryId);
     }
 
     @Transactional(readOnly = true)
     public CategoryResponseDto getCategory(UUID categoryId) {
+        log.debug("Fetching category: {}", categoryId);
         ProductCategory category = categoryRepository.findByIdAndStatusActive(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+                .orElseThrow(() -> {
+                    log.warn("Category not found: {}", categoryId);
+                    return new IllegalArgumentException("Category not found");
+                });
 
         return CategoryResponseDto.fromEntity(category);
     }
 
     @Transactional(readOnly = true)
     public List<CategoryResponseDto> getAllCategories() {
+        log.debug("Fetching all categories");
         return categoryRepository.findAllActive()
                 .stream()
                 .map(CategoryResponseDto::fromEntity)
@@ -132,6 +160,7 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public List<CategoryResponseDto> getSubcategories(UUID parentId) {
+        log.debug("Fetching subcategories for parent: {}", parentId);
         return categoryRepository.findByParentIdActive(parentId)
                 .stream()
                 .map(CategoryResponseDto::fromEntity)

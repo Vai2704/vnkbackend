@@ -11,6 +11,8 @@ import com.example.vnkapp.entity.Product;
 import com.example.vnkapp.repository.CartItemRepository;
 import com.example.vnkapp.repository.CartRepository;
 import com.example.vnkapp.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class CartService {
+
+    private static final Logger log = LoggerFactory.getLogger(CartService.class);
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
@@ -38,13 +42,18 @@ public class CartService {
 
     @Transactional
     public CartResponseDto addToCart(UUID userId, AddToCartRequestDto dto) {
+        log.debug("Adding product {} to cart for user: {}", dto.productId(), userId);
         // Validate product exists
         Product product = productRepository.findByIdAndStatusActive(dto.productId())
-                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+                .orElseThrow(() -> {
+                    log.warn("Product not found: {}", dto.productId());
+                    return new IllegalArgumentException("Product not found");
+                });
 
         // Get or create cart for user
         Cart cart = cartRepository.findByUserIdActive(userId)
                 .orElseGet(() -> {
+                    log.debug("Creating new cart for user: {}", userId);
                     Cart newCart = Cart.builder()
                             .userId(userId)
                             .build();
@@ -59,10 +68,12 @@ public class CartService {
             if (cartItem.getStatus().equals(BaseEntity.STATUS_ACTIVE)) {
                 // Update quantity for active item
                 cartItem.setQuantity(cartItem.getQuantity() + dto.quantity());
+                log.debug("Updated quantity for existing cart item, productId: {}", dto.productId());
             } else {
                 // Reactivate soft-deleted item
                 cartItem.setStatus(BaseEntity.STATUS_ACTIVE);
                 cartItem.setQuantity(dto.quantity());
+                log.debug("Reactivated cart item, productId: {}", dto.productId());
             }
             cartItem.setUnitPrice(product.getPrice());
             cartItemRepository.save(cartItem);
@@ -75,13 +86,16 @@ public class CartService {
                     .unitPrice(product.getPrice())
                     .build();
             cartItemRepository.save(cartItem);
+            log.debug("New cart item added, productId: {}", dto.productId());
         }
 
+        log.info("Product {} added to cart for user: {}", dto.productId(), userId);
         return getCart(userId);
     }
 
     @Transactional(readOnly = true)
     public CartResponseDto getCart(UUID userId) {
+        log.debug("Fetching cart for user: {}", userId);
         Cart cart = cartRepository.findByUserIdActive(userId)
                 .orElse(null);
 
@@ -130,40 +144,60 @@ public class CartService {
 
     @Transactional
     public CartResponseDto updateCartItemQuantity(UUID userId, UUID cartItemId, UpdateCartItemRequestDto dto) {
+        log.debug("Updating cart item {} for user: {}", cartItemId, userId);
         Cart cart = cartRepository.findByUserIdActive(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+                .orElseThrow(() -> {
+                    log.warn("Cart not found for user: {}", userId);
+                    return new IllegalArgumentException("Cart not found");
+                });
 
         CartItem cartItem = cartItemRepository.findById(cartItemId)
                 .filter(item -> item.getCartId().equals(cart.getId()) && item.getStatus().equals(BaseEntity.STATUS_ACTIVE))
-                .orElseThrow(() -> new IllegalArgumentException("Cart item not found"));
+                .orElseThrow(() -> {
+                    log.warn("Cart item {} not found for user: {}", cartItemId, userId);
+                    return new IllegalArgumentException("Cart item not found");
+                });
 
         // Update quantity
         cartItem.setQuantity(dto.quantity());
         cartItemRepository.save(cartItem);
+        log.info("Cart item {} quantity updated to {}", cartItemId, dto.quantity());
 
         return getCart(userId);
     }
 
     @Transactional
     public CartResponseDto removeFromCart(UUID userId, UUID cartItemId) {
+        log.debug("Removing cart item {} for user: {}", cartItemId, userId);
         Cart cart = cartRepository.findByUserIdActive(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+                .orElseThrow(() -> {
+                    log.warn("Cart not found for user: {}", userId);
+                    return new IllegalArgumentException("Cart not found");
+                });
 
         CartItem cartItem = cartItemRepository.findById(cartItemId)
                 .filter(item -> item.getCartId().equals(cart.getId()) && item.getStatus().equals(BaseEntity.STATUS_ACTIVE))
-                .orElseThrow(() -> new IllegalArgumentException("Cart item not found"));
+                .orElseThrow(() -> {
+                    log.warn("Cart item {} not found for user: {}", cartItemId, userId);
+                    return new IllegalArgumentException("Cart item not found");
+                });
 
         // Soft delete
         cartItem.setStatus(BaseEntity.STATUS_INACTIVE);
         cartItemRepository.save(cartItem);
+        log.info("Cart item {} removed for user: {}", cartItemId, userId);
 
         return getCart(userId);
     }
 
     @Transactional
     public void clearCart(UUID userId) {
+        log.debug("Clearing cart for user: {}", userId);
         Cart cart = cartRepository.findByUserIdActive(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+                .orElseThrow(() -> {
+                    log.warn("Cart not found for user: {}", userId);
+                    return new IllegalArgumentException("Cart not found");
+                });
 
         List<CartItem> cartItems = cartItemRepository.findByCartIdActive(cart.getId());
 
@@ -172,5 +206,7 @@ public class CartService {
             item.setStatus(BaseEntity.STATUS_INACTIVE);
             cartItemRepository.save(item);
         });
+
+        log.info("Cart cleared for user: {}, {} items removed", userId, cartItems.size());
     }
 }
