@@ -8,10 +8,12 @@ import com.example.vnkapp.dto.user.UserLoginRequestDto;
 import com.example.vnkapp.dto.user.UserRegisterRequestDto;
 import com.example.vnkapp.dto.user.UserResponseDto;
 import com.example.vnkapp.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -63,6 +65,25 @@ public class AuthController {
             log.error("Login error for email: {}", request.email(), ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new UserResponseDto(null, "Can't login user due to some issue."));
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<UserResponseDto> logout(HttpServletRequest request) {
+        log.info("Logout request received");
+        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (header == null || !header.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new UserResponseDto(null, "Missing or invalid Authorization header."));
+        }
+        String token = header.substring(7).trim();
+        try {
+            userService.logout(token);
+            return ResponseEntity.ok(new UserResponseDto("Ok", null));
+        } catch (Exception ex) {
+            log.error("Logout error", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new UserResponseDto(null, "Logout failed."));
         }
     }
 

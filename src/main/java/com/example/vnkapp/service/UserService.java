@@ -5,6 +5,7 @@ import com.example.vnkapp.dto.user.LoginResponseDto;
 import com.example.vnkapp.dto.user.ResetPasswordRequestDto;
 import com.example.vnkapp.dto.user.UserLoginRequestDto;
 import com.example.vnkapp.dto.user.UserRegisterRequestDto;
+import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.PasswordResetToken;
 import com.example.vnkapp.entity.User;
 import com.example.vnkapp.entity.UserSession;
@@ -36,9 +37,6 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final Optional<EmailService> emailService;
     private final SecureRandom secureRandom = new SecureRandom();
-
-    @Value("${app.session.expiry-hours:24}")
-    private int sessionExpiryHours;
 
     @Value("${app.password-reset.expiry-minutes:5}")
     private int passwordResetExpiryMinutes;
@@ -77,7 +75,7 @@ public class UserService {
 
         // Auto-login: Create session and return token
         String sessionToken = generateSessionToken();
-        Instant expiresAt = Instant.now().plus(sessionExpiryHours, ChronoUnit.HOURS);
+        Instant expiresAt = Instant.now().plus(36500, ChronoUnit.DAYS);
 
         UserSession session = UserSession.builder()
                 .userId(savedUser.getId())
@@ -87,7 +85,7 @@ public class UserService {
 
         userSessionRepository.save(session);
 
-        return new LoginResponseDto(sessionToken, expiresAt, sessionExpiryHours);
+        return new LoginResponseDto(sessionToken, expiresAt);
     }
 
     @Transactional
@@ -105,7 +103,7 @@ public class UserService {
         }
 
         String sessionToken = generateSessionToken();
-        Instant expiresAt = Instant.now().plus(sessionExpiryHours, ChronoUnit.HOURS);
+        Instant expiresAt = Instant.now().plus(36500, ChronoUnit.DAYS);
 
         UserSession session = UserSession.builder()
                 .userId(user.getId())
@@ -116,7 +114,7 @@ public class UserService {
         userSessionRepository.save(session);
         log.info("User logged in: {}", user.getId());
 
-        return new LoginResponseDto(sessionToken, expiresAt, sessionExpiryHours);
+        return new LoginResponseDto(sessionToken, expiresAt);
     }
 
     @Transactional
@@ -180,6 +178,16 @@ public class UserService {
 
         // Send confirmation email asynchronously (if email service is configured)
         emailService.ifPresent(service -> service.sendPasswordResetSuccess(user.getEmail(), user.getUsername()));
+    }
+
+    @Transactional
+    public void logout(String sessionToken) {
+        log.debug("Logout request for token");
+        userSessionRepository.findBySessionToken(sessionToken).ifPresent(session -> {
+            session.setStatus(BaseEntity.STATUS_INACTIVE);
+            userSessionRepository.save(session);
+            log.info("Session marked inactive on logout for user: {}", session.getUserId());
+        });
     }
 
     private String generateSessionToken() {

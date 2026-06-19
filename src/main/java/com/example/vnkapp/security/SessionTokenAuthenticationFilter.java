@@ -56,7 +56,7 @@ public class SessionTokenAuthenticationFilter extends OncePerRequestFilter {
         }
 
         Optional<UserSession> sessionOpt = userSessionRepository.findBySessionToken(token);
-        if (sessionOpt.isEmpty() || sessionOpt.get().isExpired()) {
+        if (sessionOpt.isEmpty() || !sessionOpt.get().isActive() || sessionOpt.get().isExpired()) {
             filterChain.doFilter(request, response);
             return;
         }
