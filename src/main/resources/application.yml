@@ -17,7 +17,5 @@ spring:
 
 app:
   name: VNK App
-  session:
-    expiry-hours: 24
   password-reset:
     expiry-minutes: 15
