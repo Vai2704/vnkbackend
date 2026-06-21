@@ -18,8 +18,6 @@ public record FamilyMemberResponseDto(
         String email,
         String bloodGroup,
         String profileImageUrl,
-        String disease,
-        String medication,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -34,8 +32,6 @@ public record FamilyMemberResponseDto(
                 familyMember.getEmail(),
                 familyMember.getBloodGroup(),
                 familyMember.getProfileImageUrl(),
-                familyMember.getDisease(),
-                familyMember.getMedication(),
                 familyMember.getCreatedAt(),
                 familyMember.getUpdatedAt()
         );

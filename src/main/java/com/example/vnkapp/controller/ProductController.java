@@ -2,7 +2,9 @@ package com.example.vnkapp.controller;
 
 import com.example.vnkapp.dto.common.ApiResponseDto;
 import com.example.vnkapp.dto.product.ProductCreateRequestDto;
+import com.example.vnkapp.dto.product.ProductDetailDto;
 import com.example.vnkapp.dto.product.ProductResponseDto;
+import com.example.vnkapp.dto.product.ProductSummaryDto;
 import com.example.vnkapp.dto.product.ProductUpdateRequestDto;
 import com.example.vnkapp.dto.user.UserResponseDto;
 import com.example.vnkapp.service.ProductService;
@@ -95,7 +97,7 @@ public class ProductController {
     public ResponseEntity<?> getProduct(@PathVariable UUID id) {
         log.info("Get product: {}", id);
         try {
-            ProductResponseDto product = productService.getProduct(id);
+            ProductDetailDto product = productService.getProduct(id);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, product));
         } catch (IllegalArgumentException ex) {
             log.warn("Product not found: {}", id);
@@ -116,7 +118,7 @@ public class ProductController {
             @RequestParam(defaultValue = "desc") String sortDir) {
         log.info("Get all products, page: {}, size: {}, sortBy: {}", page, size, sortBy);
         try {
-            Page<ProductResponseDto> products = productService.getAllProductsPaginated(page, size, sortBy, sortDir);
+            Page<ProductSummaryDto> products = productService.getAllProductsPaginated(page, size, sortBy, sortDir);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, products));
         } catch (Exception ex) {
             log.error("Get all products error", ex);
@@ -129,7 +131,7 @@ public class ProductController {
     public ResponseEntity<?> getProductsByCategory(@PathVariable UUID categoryId) {
         log.info("Get products for category: {}", categoryId);
         try {
-            List<ProductResponseDto> products = productService.getProductsByCategory(categoryId);
+            List<ProductSummaryDto> products = productService.getProductsByCategory(categoryId);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, products));
         } catch (Exception ex) {
             log.error("Get products by category {} error", categoryId, ex);

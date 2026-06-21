@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public record FamilyMemberCreateRequestDto(
         @NotBlank(message = "Name is required")
@@ -26,7 +27,7 @@ public record FamilyMemberCreateRequestDto(
 
         String profileImageUrl,
 
-        String disease,
+        List<String> diseases,
 
-        String medication
+        List<String> medications
 ) {}

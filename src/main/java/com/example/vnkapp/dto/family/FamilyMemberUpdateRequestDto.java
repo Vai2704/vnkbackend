@@ -4,6 +4,7 @@ import com.example.vnkapp.enums.common.Gender;
 import com.example.vnkapp.enums.common.Relationship;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public record FamilyMemberUpdateRequestDto(
         String name,
@@ -14,6 +15,6 @@ public record FamilyMemberUpdateRequestDto(
         String email,
         String bloodGroup,
         String profileImageUrl,
-        String disease,
-        String medication
+        List<String> diseases,
+        List<String> medications
 ) {}

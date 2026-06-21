@@ -1,7 +1,9 @@
 package com.example.vnkapp.service;
 
 import com.example.vnkapp.dto.product.ProductCreateRequestDto;
+import com.example.vnkapp.dto.product.ProductDetailDto;
 import com.example.vnkapp.dto.product.ProductResponseDto;
+import com.example.vnkapp.dto.product.ProductSummaryDto;
 import com.example.vnkapp.dto.product.ProductUpdateRequestDto;
 import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.Product;
@@ -211,7 +213,7 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductResponseDto getProduct(UUID productId) {
+    public ProductDetailDto getProduct(UUID productId) {
         log.debug("Fetching product: {}", productId);
         Product product = productRepository.findByIdAndStatusActive(productId)
                 .orElseThrow(() -> {
@@ -219,20 +221,20 @@ public class ProductService {
                     return new IllegalArgumentException("Product not found");
                 });
 
-        return ProductResponseDto.fromEntity(product);
+        return ProductDetailDto.fromEntity(product);
     }
 
     @Transactional(readOnly = true)
-    public List<ProductResponseDto> getAllProducts() {
+    public List<ProductSummaryDto> getAllProducts() {
         log.debug("Fetching all products");
         return productRepository.findAllActive()
                 .stream()
-                .map(ProductResponseDto::fromEntity)
+                .map(ProductSummaryDto::fromEntity)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public Page<ProductResponseDto> getAllProductsPaginated(int page, int size, String sortBy, String sortDir) {
+    public Page<ProductSummaryDto> getAllProductsPaginated(int page, int size, String sortBy, String sortDir) {
         log.debug("Fetching products page: {}, size: {}, sortBy: {}", page, size, sortBy);
         Sort sort = sortDir.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
@@ -240,15 +242,15 @@ public class ProductService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         return productRepository.findAllActivePaginated(pageable)
-                .map(ProductResponseDto::fromEntity);
+                .map(ProductSummaryDto::fromEntity);
     }
 
     @Transactional(readOnly = true)
-    public List<ProductResponseDto> getProductsByCategory(UUID categoryId) {
+    public List<ProductSummaryDto> getProductsByCategory(UUID categoryId) {
         log.debug("Fetching products for category: {}", categoryId);
         return productRepository.findByCategoryIdActive(categoryId)
                 .stream()
-                .map(ProductResponseDto::fromEntity)
+                .map(ProductSummaryDto::fromEntity)
                 .toList();
     }
 
