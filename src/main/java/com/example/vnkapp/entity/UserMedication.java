@@ -46,11 +46,12 @@ public class UserMedication extends BaseEntity {
     @Column(name = "custom_medication_name")
     private String customMedicationName;
 
-    @Column(nullable = false)
+    // TODO: make required once medication detail flow (dosage, frequency) is implemented
+    @Column(nullable = true)
     private String dosage;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "frequency", nullable = false)
+    @Column(name = "frequency", nullable = true)
     private Frequency frequency;
 
     @Column(name = "times_per_day")
@@ -64,7 +65,8 @@ public class UserMedication extends BaseEntity {
     @Column(name = "meal_relation")
     private MealRelation mealRelation;
 
-    @Column(name = "start_date", nullable = false)
+    // TODO: make required once medication detail flow is implemented
+    @Column(name = "start_date", nullable = true)
     private LocalDate startDate;
 
     @Column(name = "end_date")

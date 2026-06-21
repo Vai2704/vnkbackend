@@ -56,10 +56,4 @@ public class FamilyMember extends BaseEntity {
 
     @Column(name = "profile_image_url")
     private String profileImageUrl;
-
-    @Column(name = "disease")
-    private String disease;
-
-    @Column(name = "medication")
-    private String medication;
 }
