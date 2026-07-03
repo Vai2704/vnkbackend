@@ -3,9 +3,12 @@ package com.example.vnkapp.repository;
 import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.Wishlist;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface WishlistRepository extends JpaRepository<Wishlist, UUID> {
@@ -26,5 +29,12 @@ public interface WishlistRepository extends JpaRepository<Wishlist, UUID> {
 
     default boolean existsByUserIdAndProductIdActive(UUID userId, UUID productId) {
         return existsByUserIdAndProductIdAndStatus(userId, productId, BaseEntity.STATUS_ACTIVE);
+    }
+
+    @Query("SELECT w.productId FROM Wishlist w WHERE w.userId = :userId AND w.status = :status")
+    Set<UUID> findProductIdsByUserIdAndStatus(@Param("userId") UUID userId, @Param("status") Integer status);
+
+    default Set<UUID> findWishlistedProductIds(UUID userId) {
+        return findProductIdsByUserIdAndStatus(userId, BaseEntity.STATUS_ACTIVE);
     }
 }

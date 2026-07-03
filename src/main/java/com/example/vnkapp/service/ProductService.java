@@ -9,6 +9,7 @@ import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.Product;
 import com.example.vnkapp.repository.ProductCategoryRepository;
 import com.example.vnkapp.repository.ProductRepository;
+import com.example.vnkapp.repository.WishlistRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -19,8 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -31,14 +34,17 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final ProductCategoryRepository productCategoryRepository;
+    private final WishlistRepository wishlistRepository;
 
     private static final Pattern NON_LATIN = Pattern.compile("[^\\w-]");
     private static final Pattern WHITESPACE = Pattern.compile("[\\s]");
 
     public ProductService(ProductRepository productRepository,
-                          ProductCategoryRepository productCategoryRepository) {
+                          ProductCategoryRepository productCategoryRepository,
+                          WishlistRepository wishlistRepository) {
         this.productRepository = productRepository;
         this.productCategoryRepository = productCategoryRepository;
+        this.wishlistRepository = wishlistRepository;
     }
 
     @Transactional
@@ -225,32 +231,32 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProductSummaryDto> getAllProducts() {
-        log.debug("Fetching all products");
-        return productRepository.findAllActive()
-                .stream()
-                .map(ProductSummaryDto::fromEntity)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public Page<ProductSummaryDto> getAllProductsPaginated(int page, int size, String sortBy, String sortDir) {
-        log.debug("Fetching products page: {}, size: {}, sortBy: {}", page, size, sortBy);
+    public Page<ProductSummaryDto> getAllProductsPaginated(int page, int size, String sortBy, String sortDir, UUID userId) {
+        log.debug("Fetching products page: {}, size: {}, sortBy: {}, userId: {}", page, size, sortBy, userId);
         Sort sort = sortDir.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
 
+        Set<UUID> wishlisted = userId != null
+                ? wishlistRepository.findWishlistedProductIds(userId)
+                : Collections.emptySet();
+
         return productRepository.findAllActivePaginated(pageable)
-                .map(ProductSummaryDto::fromEntity);
+                .map(p -> ProductSummaryDto.fromEntity(p, wishlisted.contains(p.getId())));
     }
 
     @Transactional(readOnly = true)
-    public List<ProductSummaryDto> getProductsByCategory(UUID categoryId) {
-        log.debug("Fetching products for category: {}", categoryId);
+    public List<ProductSummaryDto> getProductsByCategory(UUID categoryId, UUID userId) {
+        log.debug("Fetching products for category: {}, userId: {}", categoryId, userId);
+
+        Set<UUID> wishlisted = userId != null
+                ? wishlistRepository.findWishlistedProductIds(userId)
+                : Collections.emptySet();
+
         return productRepository.findByCategoryIdActive(categoryId)
                 .stream()
-                .map(ProductSummaryDto::fromEntity)
+                .map(p -> ProductSummaryDto.fromEntity(p, wishlisted.contains(p.getId())))
                 .toList();
     }
 

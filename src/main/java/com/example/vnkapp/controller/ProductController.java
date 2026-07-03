@@ -7,6 +7,7 @@ import com.example.vnkapp.dto.product.ProductResponseDto;
 import com.example.vnkapp.dto.product.ProductSummaryDto;
 import com.example.vnkapp.dto.product.ProductUpdateRequestDto;
 import com.example.vnkapp.dto.user.UserResponseDto;
+import com.example.vnkapp.security.AuthenticatedUser;
 import com.example.vnkapp.service.ProductService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -112,13 +114,15 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<?> getAllProducts(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
         log.info("Get all products, page: {}, size: {}, sortBy: {}", page, size, sortBy);
         try {
-            Page<ProductSummaryDto> products = productService.getAllProductsPaginated(page, size, sortBy, sortDir);
+            UUID userId = currentUser != null ? currentUser.getId() : null;
+            Page<ProductSummaryDto> products = productService.getAllProductsPaginated(page, size, sortBy, sortDir, userId);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, products));
         } catch (Exception ex) {
             log.error("Get all products error", ex);
@@ -128,10 +132,13 @@ public class ProductController {
     }
 
     @GetMapping("/category/{categoryId}")
-    public ResponseEntity<?> getProductsByCategory(@PathVariable UUID categoryId) {
+    public ResponseEntity<?> getProductsByCategory(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @PathVariable UUID categoryId) {
         log.info("Get products for category: {}", categoryId);
         try {
-            List<ProductSummaryDto> products = productService.getProductsByCategory(categoryId);
+            UUID userId = currentUser != null ? currentUser.getId() : null;
+            List<ProductSummaryDto> products = productService.getProductsByCategory(categoryId, userId);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, products));
         } catch (Exception ex) {
             log.error("Get products by category {} error", categoryId, ex);
