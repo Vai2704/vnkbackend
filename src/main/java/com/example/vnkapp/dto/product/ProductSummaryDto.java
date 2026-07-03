@@ -14,12 +14,12 @@ public record ProductSummaryDto(
         BigDecimal price,
         BigDecimal compareAtPrice,
         String brand,
-        Boolean isFeatured,
+        Boolean isWishlisted,
         BigDecimal averageRating,
         Integer reviewCount,
         Integer stockQuantity
 ) {
-    public static ProductSummaryDto fromEntity(Product product) {
+    public static ProductSummaryDto fromEntity(Product product, boolean isWishlisted) {
         return new ProductSummaryDto(
                 product.getId(),
                 product.getCategoryId(),
@@ -29,7 +29,7 @@ public record ProductSummaryDto(
                 product.getPrice(),
                 product.getCompareAtPrice(),
                 product.getBrand(),
-                product.getIsFeatured(),
+                isWishlisted,
                 product.getAverageRating(),
                 product.getReviewCount(),
                 product.getStockQuantity()
