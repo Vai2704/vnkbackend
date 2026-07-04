@@ -5,10 +5,12 @@ import com.example.vnkapp.dto.product.ProductDetailDto;
 import com.example.vnkapp.dto.product.ProductResponseDto;
 import com.example.vnkapp.dto.product.ProductSummaryDto;
 import com.example.vnkapp.dto.product.ProductUpdateRequestDto;
+import com.example.vnkapp.dto.review.ReviewResponseDto;
 import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.Product;
 import com.example.vnkapp.repository.ProductCategoryRepository;
 import com.example.vnkapp.repository.ProductRepository;
+import com.example.vnkapp.repository.ProductReviewRepository;
 import com.example.vnkapp.repository.WishlistRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,16 +37,19 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ProductCategoryRepository productCategoryRepository;
     private final WishlistRepository wishlistRepository;
+    private final ProductReviewRepository productReviewRepository;
 
     private static final Pattern NON_LATIN = Pattern.compile("[^\\w-]");
     private static final Pattern WHITESPACE = Pattern.compile("[\\s]");
 
     public ProductService(ProductRepository productRepository,
                           ProductCategoryRepository productCategoryRepository,
-                          WishlistRepository wishlistRepository) {
+                          WishlistRepository wishlistRepository,
+                          ProductReviewRepository productReviewRepository) {
         this.productRepository = productRepository;
         this.productCategoryRepository = productCategoryRepository;
         this.wishlistRepository = wishlistRepository;
+        this.productReviewRepository = productReviewRepository;
     }
 
     @Transactional
@@ -227,7 +232,12 @@ public class ProductService {
                     return new IllegalArgumentException("Product not found");
                 });
 
-        return ProductDetailDto.fromEntity(product);
+        List<ReviewResponseDto> reviews = productReviewRepository.findApprovedByProductId(productId)
+                .stream()
+                .map(ReviewResponseDto::fromEntity)
+                .toList();
+
+        return ProductDetailDto.fromEntity(product, reviews);
     }
 
     @Transactional(readOnly = true)
