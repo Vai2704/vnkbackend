@@ -31,6 +31,8 @@ public interface WishlistRepository extends JpaRepository<Wishlist, UUID> {
         return existsByUserIdAndProductIdAndStatus(userId, productId, BaseEntity.STATUS_ACTIVE);
     }
 
+    Optional<Wishlist> findByUserIdAndProductId(UUID userId, UUID productId);
+
     @Query("SELECT w.productId FROM Wishlist w WHERE w.userId = :userId AND w.status = :status")
     Set<UUID> findProductIdsByUserIdAndStatus(@Param("userId") UUID userId, @Param("status") Integer status);
 
