@@ -96,10 +96,13 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getProduct(@PathVariable UUID id) {
+    public ResponseEntity<?> getProduct(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal AuthenticatedUser currentUser) {
         log.info("Get product: {}", id);
         try {
-            ProductDetailDto product = productService.getProduct(id);
+            UUID userId = currentUser != null ? currentUser.getId() : null;
+            ProductDetailDto product = productService.getProduct(id, userId);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, product));
         } catch (IllegalArgumentException ex) {
             log.warn("Product not found: {}", id);

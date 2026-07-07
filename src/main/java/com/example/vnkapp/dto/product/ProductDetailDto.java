@@ -25,9 +25,11 @@ public record ProductDetailDto(
         Boolean isFeatured,
         BigDecimal averageRating,
         Integer reviewCount,
+        Boolean isWishlisted,
+        Boolean isInCart,
         List<ReviewResponseDto> reviews
 ) {
-    public static ProductDetailDto fromEntity(Product product, List<ReviewResponseDto> reviews) {
+    public static ProductDetailDto fromEntity(Product product, boolean isWishlisted, boolean isInCart, List<ReviewResponseDto> reviews) {
         return new ProductDetailDto(
                 product.getId(),
                 product.getCategoryId(),
@@ -46,6 +48,8 @@ public record ProductDetailDto(
                 product.getIsFeatured(),
                 product.getAverageRating(),
                 product.getReviewCount(),
+                isWishlisted,
+                isInCart,
                 reviews
         );
     }

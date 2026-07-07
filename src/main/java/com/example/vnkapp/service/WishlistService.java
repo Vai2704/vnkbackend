@@ -43,17 +43,24 @@ public class WishlistService {
                     return new IllegalArgumentException("Product not found");
                 });
 
-        // Check if already in wishlist
-        if (wishlistRepository.existsByUserIdAndProductIdActive(userId, dto.productId())) {
-            log.warn("Product {} already in wishlist for user: {}", dto.productId(), userId);
-            throw new IllegalArgumentException("Product already in wishlist");
+        // Check if a row already exists (active or previously removed)
+        Wishlist wishlist = wishlistRepository.findByUserIdAndProductId(userId, dto.productId())
+                .orElse(null);
+
+        if (wishlist != null) {
+            if (wishlist.isActive()) {
+                log.warn("Product {} already in wishlist for user: {}", dto.productId(), userId);
+                throw new IllegalArgumentException("Product already in wishlist");
+            }
+            // Reactivate the previously removed entry
+            wishlist.setStatus(BaseEntity.STATUS_ACTIVE);
+        } else {
+            wishlist = Wishlist.builder()
+                    .userId(userId)
+                    .productId(dto.productId())
+                    .build();
         }
 
-        // Add to wishlist
-        Wishlist wishlist = Wishlist.builder()
-                .userId(userId)
-                .productId(dto.productId())
-                .build();
         wishlistRepository.save(wishlist);
         log.info("Product {} added to wishlist for user: {}", dto.productId(), userId);
 

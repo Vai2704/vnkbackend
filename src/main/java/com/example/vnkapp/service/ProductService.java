@@ -8,6 +8,8 @@ import com.example.vnkapp.dto.product.ProductUpdateRequestDto;
 import com.example.vnkapp.dto.review.ReviewResponseDto;
 import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.Product;
+import com.example.vnkapp.repository.CartItemRepository;
+import com.example.vnkapp.repository.CartRepository;
 import com.example.vnkapp.repository.ProductCategoryRepository;
 import com.example.vnkapp.repository.ProductRepository;
 import com.example.vnkapp.repository.ProductReviewRepository;
@@ -38,6 +40,8 @@ public class ProductService {
     private final ProductCategoryRepository productCategoryRepository;
     private final WishlistRepository wishlistRepository;
     private final ProductReviewRepository productReviewRepository;
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
 
     private static final Pattern NON_LATIN = Pattern.compile("[^\\w-]");
     private static final Pattern WHITESPACE = Pattern.compile("[\\s]");
@@ -45,11 +49,15 @@ public class ProductService {
     public ProductService(ProductRepository productRepository,
                           ProductCategoryRepository productCategoryRepository,
                           WishlistRepository wishlistRepository,
-                          ProductReviewRepository productReviewRepository) {
+                          ProductReviewRepository productReviewRepository,
+                          CartRepository cartRepository,
+                          CartItemRepository cartItemRepository) {
         this.productRepository = productRepository;
         this.productCategoryRepository = productCategoryRepository;
         this.wishlistRepository = wishlistRepository;
         this.productReviewRepository = productReviewRepository;
+        this.cartRepository = cartRepository;
+        this.cartItemRepository = cartItemRepository;
     }
 
     @Transactional
@@ -224,8 +232,8 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public ProductDetailDto getProduct(UUID productId) {
-        log.debug("Fetching product: {}", productId);
+    public ProductDetailDto getProduct(UUID productId, UUID userId) {
+        log.debug("Fetching product: {}, userId: {}", productId, userId);
         Product product = productRepository.findByIdAndStatusActive(productId)
                 .orElseThrow(() -> {
                     log.warn("Product not found: {}", productId);
@@ -237,7 +245,17 @@ public class ProductService {
                 .map(ReviewResponseDto::fromEntity)
                 .toList();
 
-        return ProductDetailDto.fromEntity(product, reviews);
+        boolean isWishlisted = false;
+        boolean isInCart = false;
+
+        if (userId != null) {
+            isWishlisted = wishlistRepository.existsByUserIdAndProductIdActive(userId, productId);
+            isInCart = cartRepository.findByUserIdActive(userId)
+                    .map(cart -> cartItemRepository.findByCartIdAndProductIdActive(cart.getId(), productId).isPresent())
+                    .orElse(false);
+        }
+
+        return ProductDetailDto.fromEntity(product, isWishlisted, isInCart, reviews);
     }
 
     @Transactional(readOnly = true)
