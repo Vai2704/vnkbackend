@@ -1,6 +1,7 @@
 package com.example.vnkapp.controller;
 
 import com.example.vnkapp.dto.common.ApiResponseDto;
+import com.example.vnkapp.dto.common.PagedResponseDto;
 import com.example.vnkapp.dto.product.ProductCreateRequestDto;
 import com.example.vnkapp.dto.product.ProductDetailDto;
 import com.example.vnkapp.dto.product.ProductResponseDto;
@@ -126,7 +127,7 @@ public class ProductController {
         try {
             UUID userId = currentUser != null ? currentUser.getId() : null;
             Page<ProductSummaryDto> products = productService.getAllProductsPaginated(page, size, sortBy, sortDir, userId);
-            return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, products));
+            return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, PagedResponseDto.from(products)));
         } catch (Exception ex) {
             log.error("Get all products error", ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
