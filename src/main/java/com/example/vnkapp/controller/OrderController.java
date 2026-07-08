@@ -1,6 +1,7 @@
 package com.example.vnkapp.controller;
 
 import com.example.vnkapp.dto.common.ApiResponseDto;
+import com.example.vnkapp.dto.common.PagedResponseDto;
 import com.example.vnkapp.dto.order.CancelOrderRequestDto;
 import com.example.vnkapp.dto.order.OrderResponseDto;
 import com.example.vnkapp.dto.order.OrderSummaryResponseDto;
@@ -67,7 +68,7 @@ public class OrderController {
         log.info("Get orders for user: {}, status: {}, page: {}", currentUser.getId(), status, page);
         try {
             Page<OrderSummaryResponseDto> orders = orderService.getUserOrders(currentUser.getId(), status, page, size);
-            return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, orders));
+            return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, PagedResponseDto.from(orders)));
         } catch (Exception ex) {
             log.error("Get orders error for user: {}", currentUser.getId(), ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
