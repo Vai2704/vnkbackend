@@ -245,17 +245,20 @@ public class ProductService {
                 .map(ReviewResponseDto::fromEntity)
                 .toList();
 
-        boolean isWishlisted = false;
-        boolean isInCart = false;
+        UUID wishlistId = null;
+        Integer cartQuantity = null;
 
         if (userId != null) {
-            isWishlisted = wishlistRepository.existsByUserIdAndProductIdActive(userId, productId);
-            isInCart = cartRepository.findByUserIdActive(userId)
-                    .map(cart -> cartItemRepository.findByCartIdAndProductIdActive(cart.getId(), productId).isPresent())
-                    .orElse(false);
+            wishlistId = wishlistRepository.findByUserIdAndProductIdActive(userId, productId)
+                    .map(w -> w.getId())
+                    .orElse(null);
+            cartQuantity = cartRepository.findByUserIdActive(userId)
+                    .flatMap(cart -> cartItemRepository.findByCartIdAndProductIdActive(cart.getId(), productId))
+                    .map(item -> item.getQuantity())
+                    .orElse(null);
         }
 
-        return ProductDetailDto.fromEntity(product, isWishlisted, isInCart, reviews);
+        return ProductDetailDto.fromEntity(product, wishlistId, cartQuantity, reviews);
     }
 
     @Transactional(readOnly = true)
