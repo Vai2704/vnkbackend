@@ -102,6 +102,7 @@ public class ProductService {
                 .stockQuantity(dto.stockQuantity() != null ? dto.stockQuantity() : 0)
                 .lowStockThreshold(dto.lowStockThreshold() != null ? dto.lowStockThreshold() : 10)
                 .weightGrams(dto.weightGrams())
+                .packSize(dto.packSize())
                 .brand(dto.brand())
                 .ingredients(dto.ingredients())
                 .howToUse(dto.howToUse())
@@ -185,6 +186,10 @@ public class ProductService {
 
         if (dto.weightGrams() != null) {
             product.setWeightGrams(dto.weightGrams());
+        }
+
+        if (dto.packSize() != null) {
+            product.setPackSize(dto.packSize());
         }
 
         if (dto.brand() != null) {

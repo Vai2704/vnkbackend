@@ -1,6 +1,7 @@
 package com.example.vnkapp.controller;
 
 import com.example.vnkapp.dto.cart.AddToCartRequestDto;
+import com.example.vnkapp.dto.cart.CartItemResponseDto;
 import com.example.vnkapp.dto.cart.CartResponseDto;
 import com.example.vnkapp.dto.cart.UpdateCartItemRequestDto;
 import com.example.vnkapp.dto.common.ApiResponseDto;
@@ -66,6 +67,25 @@ public class CartController {
             log.error("Get cart error for user: {}", currentUser.getId(), ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new UserResponseDto(null, "Can't fetch cart due to some issue."));
+        }
+    }
+
+    @GetMapping("/items/{itemId}")
+    public ResponseEntity<?> getCartItem(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @PathVariable UUID itemId) {
+        log.info("Get cart item {} for user: {}", itemId, currentUser.getId());
+        try {
+            CartItemResponseDto item = cartService.getCartItem(currentUser.getId(), itemId);
+            return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, item));
+        } catch (IllegalArgumentException ex) {
+            log.warn("Cart item {} not found for user: {} - {}", itemId, currentUser.getId(), ex.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new UserResponseDto(null, ex.getMessage()));
+        } catch (Exception ex) {
+            log.error("Get cart item {} error for user: {}", itemId, currentUser.getId(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new UserResponseDto(null, "Can't fetch cart item due to some issue."));
         }
     }
 

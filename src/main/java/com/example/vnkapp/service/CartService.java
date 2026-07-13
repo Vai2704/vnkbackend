@@ -127,6 +127,7 @@ public class CartService {
                             item.getProductId(),
                             product != null ? product.getName() : null,
                             product != null ? product.getSlug() : null,
+                            product != null ? product.getPackSize() : null,
                             item.getUnitPrice(),
                             item.getQuantity(),
                             totalPrice
@@ -140,6 +141,37 @@ public class CartService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new CartResponseDto(cart.getId(), items, totalItems, totalAmount);
+    }
+
+    @Transactional(readOnly = true)
+    public CartItemResponseDto getCartItem(UUID userId, UUID cartItemId) {
+        log.debug("Fetching cart item {} for user: {}", cartItemId, userId);
+        Cart cart = cartRepository.findByUserIdActive(userId)
+                .orElseThrow(() -> {
+                    log.warn("Cart not found for user: {}", userId);
+                    return new IllegalArgumentException("Cart not found");
+                });
+
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .filter(item -> item.getCartId().equals(cart.getId()) && item.getStatus().equals(BaseEntity.STATUS_ACTIVE))
+                .orElseThrow(() -> {
+                    log.warn("Cart item {} not found for user: {}", cartItemId, userId);
+                    return new IllegalArgumentException("Cart item not found");
+                });
+
+        Product product = productRepository.findById(cartItem.getProductId()).orElse(null);
+        BigDecimal totalPrice = cartItem.getUnitPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity()));
+
+        return new CartItemResponseDto(
+                cartItem.getId(),
+                cartItem.getProductId(),
+                product != null ? product.getName() : null,
+                product != null ? product.getSlug() : null,
+                product != null ? product.getPackSize() : null,
+                cartItem.getUnitPrice(),
+                cartItem.getQuantity(),
+                totalPrice
+        );
     }
 
     @Transactional

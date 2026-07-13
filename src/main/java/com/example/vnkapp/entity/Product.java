@@ -65,6 +65,9 @@ public class Product extends BaseEntity {
     @Column(name = "weight_grams")
     private Integer weightGrams;
 
+    @Column(name = "pack_size")
+    private String packSize;
+
     @Column(name = "brand")
     private String brand;
 

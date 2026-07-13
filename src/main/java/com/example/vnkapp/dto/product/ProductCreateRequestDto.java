@@ -37,6 +37,8 @@ public record ProductCreateRequestDto(
 
         Integer weightGrams,
 
+        String packSize,
+
         String brand,
 
         String ingredients,

@@ -8,6 +8,7 @@ public record CartItemResponseDto(
         UUID productId,
         String productName,
         String productSlug,
+        String packSize,
         BigDecimal unitPrice,
         Integer quantity,
         BigDecimal totalPrice
