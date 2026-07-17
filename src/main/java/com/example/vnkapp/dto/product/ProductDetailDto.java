@@ -5,6 +5,7 @@ import com.example.vnkapp.entity.Product;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record ProductDetailDto(
@@ -19,9 +20,12 @@ public record ProductDetailDto(
         BigDecimal compareAtPrice,
         Integer stockQuantity,
         Integer weightGrams,
+        String packSize,
         String brand,
         String ingredients,
         String howToUse,
+        Map<String, String> usps,
+        String disclaimer,
         Boolean isFeatured,
         BigDecimal averageRating,
         Integer reviewCount,
@@ -29,7 +33,8 @@ public record ProductDetailDto(
         UUID wishlistId,
         Boolean isInCart,
         Integer cartQuantity,
-        List<ReviewResponseDto> reviews
+        List<ReviewResponseDto> reviews,
+        List<String> images
 ) {
     public static ProductDetailDto fromEntity(Product product, UUID wishlistId, Integer cartQuantity, List<ReviewResponseDto> reviews) {
         return new ProductDetailDto(
@@ -44,9 +49,12 @@ public record ProductDetailDto(
                 product.getCompareAtPrice(),
                 product.getStockQuantity(),
                 product.getWeightGrams(),
+                product.getPackSize(),
                 product.getBrand(),
                 product.getIngredients(),
                 product.getHowToUse(),
+                product.getUsps(),
+                product.getDisclaimer(),
                 product.getIsFeatured(),
                 product.getAverageRating(),
                 product.getReviewCount(),
@@ -54,7 +62,8 @@ public record ProductDetailDto(
                 wishlistId,
                 cartQuantity != null,
                 cartQuantity,
-                reviews
+                reviews,
+                product.getImageUrls()
         );
     }
 }

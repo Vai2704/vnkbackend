@@ -28,13 +28,13 @@ public class EmailService {
     }
 
     @Async
-    public void sendWelcomeEmail(String toEmail, String username) {
+    public void sendWelcomeEmail(String toEmail, String username, String memberId) {
         log.info("Sending welcome email to: {}", toEmail);
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
         message.setTo(toEmail);
         message.setSubject("Welcome to " + appName + "!");
-        message.setText(buildWelcomeEmailBody(username));
+        message.setText(buildWelcomeEmailBody(username, memberId));
         mailSender.send(message);
         log.debug("Welcome email sent to: {}", toEmail);
     }
@@ -76,7 +76,7 @@ public class EmailService {
         log.debug("Order confirmation email sent for order: {} to: {}", orderNumber, toEmail);
     }
 
-    private String buildWelcomeEmailBody(String username) {
+    private String buildWelcomeEmailBody(String username, String memberId) {
         return String.format("""
             Hi %s,
 
@@ -89,11 +89,15 @@ public class EmailService {
             - Add family members to manage their health too
             - Refer friends and earn rewards
 
+            Your Member ID is: %s
+
+            Share this Member ID with friends and family. When they sign up using it, you'll both earn rewards through our Refer & Earn program.
+
             If you have any questions, feel free to reach out to our support team.
 
             Best regards,
             The %s Team
-            """, username, appName, appName);
+            """, username, appName, memberId, appName);
     }
 
     private String buildPasswordResetEmailBody(String code) {

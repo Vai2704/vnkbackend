@@ -7,9 +7,11 @@ import com.example.vnkapp.dto.user.UserLoginRequestDto;
 import com.example.vnkapp.dto.user.UserRegisterRequestDto;
 import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.PasswordResetToken;
+import com.example.vnkapp.entity.ReferralCode;
 import com.example.vnkapp.entity.User;
 import com.example.vnkapp.entity.UserSession;
 import com.example.vnkapp.repository.PasswordResetTokenRepository;
+import com.example.vnkapp.repository.ReferralCodeRepository;
 import com.example.vnkapp.repository.UserRepository;
 import com.example.vnkapp.repository.UserSessionRepository;
 import org.slf4j.Logger;
@@ -31,9 +33,14 @@ public class UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
+    private static final String MEMBER_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final int MEMBER_ID_LENGTH = 8;
+    private static final int MEMBER_ID_MAX_ATTEMPTS = 10;
+
     private final UserRepository userRepository;
     private final UserSessionRepository userSessionRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final ReferralCodeRepository referralCodeRepository;
     private final PasswordEncoder passwordEncoder;
     private final Optional<EmailService> emailService;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -44,11 +51,13 @@ public class UserService {
     public UserService(UserRepository userRepository,
                        UserSessionRepository userSessionRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
+                       ReferralCodeRepository referralCodeRepository,
                        PasswordEncoder passwordEncoder,
                        Optional<EmailService> emailService) {
         this.userRepository = userRepository;
         this.userSessionRepository = userSessionRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.referralCodeRepository = referralCodeRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
     }
@@ -70,8 +79,16 @@ public class UserService {
         User savedUser = userRepository.save(user);
         log.info("User registered successfully: {}", savedUser.getId());
 
-        // TODO: re-enable when SMTP credentials are configured in application.properties
-        // emailService.sendWelcomeEmail(user.getEmail(), user.getUsername());
+        String memberId = generateMemberId();
+        ReferralCode referralCode = ReferralCode.builder()
+                .userId(savedUser.getId())
+                .code(memberId)
+                .build();
+        referralCodeRepository.save(referralCode);
+        log.info("Member ID {} generated for user: {}", memberId, savedUser.getId());
+
+        // Send welcome email asynchronously (if email service is configured)
+        emailService.ifPresent(service -> service.sendWelcomeEmail(savedUser.getEmail(), savedUser.getUsername(), memberId));
 
         // Auto-login: Create session and return token
         String sessionToken = generateSessionToken();
@@ -199,5 +216,19 @@ public class UserService {
     private String generateResetCode() {
         int code = 100000 + secureRandom.nextInt(900000);
         return String.valueOf(code);
+    }
+
+    private String generateMemberId() {
+        for (int attempt = 0; attempt < MEMBER_ID_MAX_ATTEMPTS; attempt++) {
+            StringBuilder sb = new StringBuilder(MEMBER_ID_LENGTH);
+            for (int i = 0; i < MEMBER_ID_LENGTH; i++) {
+                sb.append(MEMBER_ID_ALPHABET.charAt(secureRandom.nextInt(MEMBER_ID_ALPHABET.length())));
+            }
+            String candidate = sb.toString();
+            if (!referralCodeRepository.existsByCode(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("Unable to generate a unique member ID after " + MEMBER_ID_MAX_ATTEMPTS + " attempts");
     }
 }

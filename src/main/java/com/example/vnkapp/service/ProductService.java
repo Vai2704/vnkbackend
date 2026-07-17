@@ -102,12 +102,16 @@ public class ProductService {
                 .stockQuantity(dto.stockQuantity() != null ? dto.stockQuantity() : 0)
                 .lowStockThreshold(dto.lowStockThreshold() != null ? dto.lowStockThreshold() : 10)
                 .weightGrams(dto.weightGrams())
+                .packSize(dto.packSize())
                 .brand(dto.brand())
                 .ingredients(dto.ingredients())
                 .howToUse(dto.howToUse())
+                .usps(dto.usps())
+                .disclaimer(dto.disclaimer())
                 .isFeatured(dto.isFeatured() != null ? dto.isFeatured() : false)
                 .metaTitle(dto.metaTitle())
                 .metaDescription(dto.metaDescription())
+                .imageUrls(dto.imageUrls())
                 .build();
 
         Product savedProduct = productRepository.save(product);
@@ -187,6 +191,10 @@ public class ProductService {
             product.setWeightGrams(dto.weightGrams());
         }
 
+        if (dto.packSize() != null) {
+            product.setPackSize(dto.packSize());
+        }
+
         if (dto.brand() != null) {
             product.setBrand(dto.brand());
         }
@@ -199,6 +207,14 @@ public class ProductService {
             product.setHowToUse(dto.howToUse());
         }
 
+        if (dto.usps() != null) {
+            product.setUsps(dto.usps());
+        }
+
+        if (dto.disclaimer() != null) {
+            product.setDisclaimer(dto.disclaimer());
+        }
+
         if (dto.isFeatured() != null) {
             product.setIsFeatured(dto.isFeatured());
         }
@@ -209,6 +225,10 @@ public class ProductService {
 
         if (dto.metaDescription() != null) {
             product.setMetaDescription(dto.metaDescription());
+        }
+
+        if (dto.imageUrls() != null) {
+            product.setImageUrls(dto.imageUrls());
         }
 
         Product updatedProduct = productRepository.save(product);

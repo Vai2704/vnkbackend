@@ -9,8 +9,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -65,6 +69,9 @@ public class Product extends BaseEntity {
     @Column(name = "weight_grams")
     private Integer weightGrams;
 
+    @Column(name = "pack_size")
+    private String packSize;
+
     @Column(name = "brand")
     private String brand;
 
@@ -73,6 +80,17 @@ public class Product extends BaseEntity {
 
     @Column(name = "how_to_use", columnDefinition = "TEXT")
     private String howToUse;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "usps", columnDefinition = "jsonb")
+    private Map<String, String> usps;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "image_urls", columnDefinition = "jsonb")
+    private List<String> imageUrls;
+
+    @Column(name = "disclaimer", columnDefinition = "TEXT")
+    private String disclaimer;
 
     @Column(name = "is_featured", nullable = false)
     @Builder.Default
