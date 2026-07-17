@@ -55,5 +55,7 @@ public record ProductCreateRequestDto(
 
         String metaTitle,
 
-        String metaDescription
+        String metaDescription,
+
+        List<String> imageUrls
 ) {}

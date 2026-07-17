@@ -53,6 +53,8 @@ public record ProductDetailDto(
                 product.getBrand(),
                 product.getIngredients(),
                 product.getHowToUse(),
+                product.getUsps(),
+                product.getDisclaimer(),
                 product.getIsFeatured(),
                 product.getAverageRating(),
                 product.getReviewCount(),
@@ -60,7 +62,8 @@ public record ProductDetailDto(
                 wishlistId,
                 cartQuantity != null,
                 cartQuantity,
-                reviews
+                reviews,
+                product.getImageUrls()
         );
     }
 }

@@ -207,6 +207,14 @@ public class ProductService {
             product.setHowToUse(dto.howToUse());
         }
 
+        if (dto.usps() != null) {
+            product.setUsps(dto.usps());
+        }
+
+        if (dto.disclaimer() != null) {
+            product.setDisclaimer(dto.disclaimer());
+        }
+
         if (dto.isFeatured() != null) {
             product.setIsFeatured(dto.isFeatured());
         }
@@ -217,6 +225,10 @@ public class ProductService {
 
         if (dto.metaDescription() != null) {
             product.setMetaDescription(dto.metaDescription());
+        }
+
+        if (dto.imageUrls() != null) {
+            product.setImageUrls(dto.imageUrls());
         }
 
         Product updatedProduct = productRepository.save(product);

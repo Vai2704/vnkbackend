@@ -33,9 +33,14 @@ public class UserService {
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
+    private static final String MEMBER_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final int MEMBER_ID_LENGTH = 8;
+    private static final int MEMBER_ID_MAX_ATTEMPTS = 10;
+
     private final UserRepository userRepository;
     private final UserSessionRepository userSessionRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final ReferralCodeRepository referralCodeRepository;
     private final PasswordEncoder passwordEncoder;
     private final Optional<EmailService> emailService;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -46,11 +51,13 @@ public class UserService {
     public UserService(UserRepository userRepository,
                        UserSessionRepository userSessionRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
+                       ReferralCodeRepository referralCodeRepository,
                        PasswordEncoder passwordEncoder,
                        Optional<EmailService> emailService) {
         this.userRepository = userRepository;
         this.userSessionRepository = userSessionRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.referralCodeRepository = referralCodeRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
     }
