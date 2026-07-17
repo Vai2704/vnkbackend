@@ -4,6 +4,8 @@ import com.example.vnkapp.entity.Product;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record ProductResponseDto(
@@ -24,12 +26,15 @@ public record ProductResponseDto(
         String brand,
         String ingredients,
         String howToUse,
+        Map<String, String> usps,
+        String disclaimer,
         Integer status,
         Boolean isFeatured,
         BigDecimal averageRating,
         Integer reviewCount,
         String metaTitle,
         String metaDescription,
+        List<String> imageUrls,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -52,12 +57,15 @@ public record ProductResponseDto(
                 product.getBrand(),
                 product.getIngredients(),
                 product.getHowToUse(),
+                product.getUsps(),
+                product.getDisclaimer(),
                 product.getStatus(),
                 product.getIsFeatured(),
                 product.getAverageRating(),
                 product.getReviewCount(),
                 product.getMetaTitle(),
                 product.getMetaDescription(),
+                product.getImageUrls(),
                 product.getCreatedAt(),
                 product.getUpdatedAt()
         );

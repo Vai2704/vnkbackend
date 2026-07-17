@@ -4,6 +4,8 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record ProductUpdateRequestDto(
@@ -39,9 +41,15 @@ public record ProductUpdateRequestDto(
 
         String howToUse,
 
+        Map<String, String> usps,
+
+        String disclaimer,
+
         Boolean isFeatured,
 
         String metaTitle,
 
-        String metaDescription
+        String metaDescription,
+
+        List<String> imageUrls
 ) {}

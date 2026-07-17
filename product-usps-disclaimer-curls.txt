@@ -1,0 +1,157 @@
+Product USPs & Disclaimer & Images - curl examples
+===================================================
+
+These correspond to the `usps` (JSON object of key-value pairs),
+`disclaimer` (text), and `imageUrls` (JSON array of image URLs) fields
+added to the product create/update request bodies. Replace <token> with a
+valid Bearer session token from /api/auth/login or /api/auth/register, and
+replace the categoryId / product id with real UUIDs from your database.
+
+
+1) CREATE PRODUCT - POST /api/products
+----------------------------------------------------------------------------
+
+curl -X POST http://localhost:8080/api/products \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "categoryId": "5f1c2e2a-1234-4a1b-9c1a-abcdef123456",
+    "name": "Whey Protein Isolate - Chocolate",
+    "sku": "VNK-WPI-CHOC-1KG",
+    "description": "Premium whey protein isolate for lean muscle support.",
+    "shortDescription": "Fast-absorbing, low-carb whey isolate.",
+    "price": 2499.00,
+    "compareAtPrice": 2999.00,
+    "costPrice": 1600.00,
+    "stockQuantity": 100,
+    "lowStockThreshold": 10,
+    "weightGrams": 1000,
+    "packSize": "1 kg",
+    "brand": "VNK",
+    "ingredients": "Whey protein isolate, cocoa powder, natural flavors, stevia.",
+    "howToUse": "Mix 1 scoop (30g) with 200ml water or milk, 1-2 times daily.",
+    "usps": {
+      "protein": "25g protein per serving",
+      "sugar": "Zero added sugar",
+      "testing": "Third-party lab tested",
+      "compliance": "Banned-substance free"
+    },
+    "disclaimer": "This product is a dietary supplement and not intended to diagnose, treat, cure, or prevent any disease. Consult your physician before use.",
+    "isFeatured": true,
+    "metaTitle": "Whey Protein Isolate Chocolate | VNK",
+    "metaDescription": "Buy VNK Whey Protein Isolate Chocolate online.",
+    "imageUrls": [
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-front.jpg",
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-back.jpg",
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-nutrition.jpg"
+    ]
+  }'
+
+Note: "imageUrls" is an ordered array - the FIRST url is used as the
+"thumbnailImage" wherever a single image is returned (get-all / by-category
+/ search responses). Put whichever image should represent the product on
+listing pages first.
+
+
+2) UPDATE PRODUCT - PUT /api/products/{id}
+----------------------------------------------------------------------------
+Partial update - only fields present in the body are changed; omit any
+field you don't want to touch. This also applies to imageUrls: omit it to
+leave the existing images untouched, or pass a full array to replace them
+(there's no per-image add/remove - it's a full replace).
+
+curl -X PUT http://localhost:8080/api/products/5f1c2e2a-1234-4a1b-9c1a-abcdef123456 \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "packSize": "1 kg (Value Pack)",
+    "usps": {
+      "protein": "25g protein per serving",
+      "sugar": "Zero added sugar",
+      "digestion": "Now with added digestive enzymes"
+    },
+    "disclaimer": "This product is a dietary supplement and not intended to diagnose, treat, cure, or prevent any disease. Consult your physician before use.",
+    "imageUrls": [
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-front-v2.jpg",
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-back.jpg",
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-nutrition.jpg",
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-lifestyle.jpg"
+    ]
+  }'
+
+
+3) GET PRODUCT DETAIL - GET /api/products/{id}
+----------------------------------------------------------------------------
+Returns the full ordered "images" array in ProductDetailDto.
+
+curl -X GET http://localhost:8080/api/products/5f1c2e2a-1234-4a1b-9c1a-abcdef123456 \
+  -H "Authorization: Bearer <token>"
+
+Response excerpt:
+{
+  "data": {
+    ...
+    "images": [
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-front-v2.jpg",
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-back.jpg",
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-nutrition.jpg",
+      "https://cdn.vnksupplements.com/products/wpi-choc-1kg-lifestyle.jpg"
+    ]
+  }
+}
+
+
+4) GET ALL PRODUCTS (paginated) - GET /api/products
+----------------------------------------------------------------------------
+Returns "thumbnailImage" (first image only) per product in ProductSummaryDto.
+
+curl -X GET "http://localhost:8080/api/products?page=0&size=10&sortBy=createdAt&sortDir=desc" \
+  -H "Authorization: Bearer <token>"
+
+Response excerpt (one item):
+{
+  "data": {
+    "content": [
+      {
+        ...
+        "thumbnailImage": "https://cdn.vnksupplements.com/products/wpi-choc-1kg-front-v2.jpg"
+      }
+    ]
+  }
+}
+
+
+5) GET PRODUCTS BY CATEGORY - GET /api/products/category/{categoryId}
+----------------------------------------------------------------------------
+Also ProductSummaryDto - same "thumbnailImage" field.
+
+curl -X GET http://localhost:8080/api/products/category/5f1c2e2a-1234-4a1b-9c1a-abcdef123456 \
+  -H "Authorization: Bearer <token>"
+
+
+6) SEARCH PRODUCTS - GET /api/products/search?q={query}
+----------------------------------------------------------------------------
+Also ProductSummaryDto - same "thumbnailImage" field. Note the query param
+is "q", not "query".
+
+curl -X GET "http://localhost:8080/api/products/search?q=whey&page=0&size=10" \
+  -H "Authorization: Bearer <token>"
+
+
+Notes
+-----
+- Both /api/products POST and PUT require an authenticated request
+  (Authorization: Bearer <token>) per SecurityConfig; there is currently no
+  admin/role restriction on top of that.
+- usps / disclaimer / imageUrls are all optional on both create and update -
+  omitting them leaves the value null (create) or unchanged (update).
+- usps is a JSON object (key -> string value), stored as jsonb and returned
+  the same way in responses (POST/PUT/GET). Keys are arbitrary strings you
+  choose (e.g. "protein", "sugar") - there's no fixed/enforced key set.
+- imageUrls is a JSON array of strings, stored as jsonb.
+  - Create/Update request body field: "imageUrls"
+  - Create/Update response field (ProductResponseDto): "imageUrls" (full list)
+  - Get product detail response field (ProductDetailDto): "images" (full list)
+  - Get-all / by-category / search response field (ProductSummaryDto):
+    "thumbnailImage" (single string - first entry of imageUrls, or null if
+    the product has no images)

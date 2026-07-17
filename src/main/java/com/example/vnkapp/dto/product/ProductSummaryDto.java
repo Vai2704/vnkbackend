@@ -3,6 +3,7 @@ package com.example.vnkapp.dto.product;
 import com.example.vnkapp.entity.Product;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record ProductSummaryDto(
@@ -18,9 +19,12 @@ public record ProductSummaryDto(
         Boolean isWishlisted,
         BigDecimal averageRating,
         Integer reviewCount,
-        Integer stockQuantity
+        Integer stockQuantity,
+        String thumbnailImage
 ) {
     public static ProductSummaryDto fromEntity(Product product, boolean isWishlisted) {
+        List<String> imageUrls = product.getImageUrls();
+        String thumbnailImage = (imageUrls != null && !imageUrls.isEmpty()) ? imageUrls.get(0) : null;
         return new ProductSummaryDto(
                 product.getId(),
                 product.getCategoryId(),
@@ -34,7 +38,8 @@ public record ProductSummaryDto(
                 isWishlisted,
                 product.getAverageRating(),
                 product.getReviewCount(),
-                product.getStockQuantity()
+                product.getStockQuantity(),
+                thumbnailImage
         );
     }
 }

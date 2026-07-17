@@ -106,9 +106,12 @@ public class ProductService {
                 .brand(dto.brand())
                 .ingredients(dto.ingredients())
                 .howToUse(dto.howToUse())
+                .usps(dto.usps())
+                .disclaimer(dto.disclaimer())
                 .isFeatured(dto.isFeatured() != null ? dto.isFeatured() : false)
                 .metaTitle(dto.metaTitle())
                 .metaDescription(dto.metaDescription())
+                .imageUrls(dto.imageUrls())
                 .build();
 
         Product savedProduct = productRepository.save(product);

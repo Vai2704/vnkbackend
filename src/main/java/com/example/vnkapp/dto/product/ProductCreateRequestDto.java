@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record ProductCreateRequestDto(
@@ -44,6 +46,10 @@ public record ProductCreateRequestDto(
         String ingredients,
 
         String howToUse,
+
+        Map<String, String> usps,
+
+        String disclaimer,
 
         Boolean isFeatured,
 
