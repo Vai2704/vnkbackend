@@ -3,6 +3,8 @@ package com.example.vnkapp.repository;
 import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.ProductReview;
 import com.example.vnkapp.enums.product.ReviewStatus;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -47,5 +49,13 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, UU
 
     default Double avgRatingByProductId(UUID productId) {
         return avgRatingByProductIdAndStatusAndReviewStatus(productId, BaseEntity.STATUS_ACTIVE, ReviewStatus.APPROVED);
+    }
+
+    List<ProductReview> findByStatusAndReviewStatusOrderByCreatedAtDesc(
+            Integer status, ReviewStatus reviewStatus, Pageable pageable);
+
+    default List<ProductReview> findRecentApproved(int limit) {
+        return findByStatusAndReviewStatusOrderByCreatedAtDesc(
+                BaseEntity.STATUS_ACTIVE, ReviewStatus.APPROVED, PageRequest.of(0, limit));
     }
 }
