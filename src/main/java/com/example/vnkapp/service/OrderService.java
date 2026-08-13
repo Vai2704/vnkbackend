@@ -10,6 +10,7 @@ import com.example.vnkapp.entity.BaseEntity;
 import com.example.vnkapp.entity.CartItem;
 import com.example.vnkapp.entity.Order;
 import com.example.vnkapp.entity.OrderItem;
+import com.example.vnkapp.entity.Payment;
 import com.example.vnkapp.entity.Product;
 import com.example.vnkapp.entity.ProductImage;
 import com.example.vnkapp.entity.User;
@@ -19,6 +20,7 @@ import com.example.vnkapp.repository.CartItemRepository;
 import com.example.vnkapp.repository.CartRepository;
 import com.example.vnkapp.repository.OrderItemRepository;
 import com.example.vnkapp.repository.OrderRepository;
+import com.example.vnkapp.repository.PaymentRepository;
 import com.example.vnkapp.repository.ProductImageRepository;
 import com.example.vnkapp.repository.ProductRepository;
 import com.example.vnkapp.repository.UserRepository;
@@ -55,6 +57,8 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
     private final UserRepository userRepository;
+    private final PaymentRepository paymentRepository;
+    private final PaymentService paymentService;
     private final Optional<EmailService> emailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -66,6 +70,8 @@ public class OrderService {
                         ProductRepository productRepository,
                         ProductImageRepository productImageRepository,
                         UserRepository userRepository,
+                        PaymentRepository paymentRepository,
+                        PaymentService paymentService,
                         Optional<EmailService> emailService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -75,6 +81,8 @@ public class OrderService {
         this.productRepository = productRepository;
         this.productImageRepository = productImageRepository;
         this.userRepository = userRepository;
+        this.paymentRepository = paymentRepository;
+        this.paymentService = paymentService;
         this.emailService = emailService;
     }
 
@@ -214,8 +222,14 @@ public class OrderService {
         }
         log.debug("Cart cleared for user: {}", userId);
 
-        // 11. Send order confirmation email (if email service is configured)
         User user = userRepository.findById(userId).orElse(null);
+
+        // 11. Initiate payment with the gateway. Throws (rolling back the whole order) if the
+        // gateway session can't be created, since an order the customer has no way to pay for
+        // is worse than not creating it in the first place.
+        paymentService.initiateNgeniusPayment(savedOrder);
+
+        // 12. Send order confirmation email (if email service is configured)
         if (user != null) {
             String shippingAddressFormatted = String.format("%s\n%s\n%s, %s %s\n%s",
                     savedOrder.getShippingFullName(),
@@ -234,7 +248,7 @@ public class OrderService {
             ));
         }
 
-        // 12. Return order response
+        // 13. Return order response
         return getOrderDetails(userId, savedOrder.getId());
     }
 
@@ -273,7 +287,9 @@ public class OrderService {
                 .map(OrderItemResponseDto::fromEntity)
                 .toList();
 
-        return OrderResponseDto.fromEntity(order, items);
+        Payment payment = paymentRepository.findByOrderIdActive(order.getId()).orElse(null);
+
+        return OrderResponseDto.fromEntity(order, items, payment);
     }
 
     @Transactional
@@ -310,6 +326,26 @@ public class OrderService {
                 log.debug("Stock restored for product: {}, quantity: {}", product.getId(), orderItem.getQuantity());
             }
         }
+
+        return getOrderDetails(userId, orderId);
+    }
+
+    @Transactional
+    public OrderResponseDto retryPayment(UUID userId, UUID orderId) {
+        log.info("Retry payment for order {} by user: {}", orderId, userId);
+        Order order = orderRepository.findByIdAndUserIdActive(orderId, userId)
+                .orElseThrow(() -> {
+                    log.warn("Order {} not found for user: {}", orderId, userId);
+                    return new IllegalArgumentException("Order not found");
+                });
+
+        if (order.getOrderStatus() != OrderStatus.PENDING) {
+            log.warn("Cannot retry payment for order {} - current status: {}", orderId, order.getOrderStatus());
+            throw new IllegalArgumentException(
+                    "Payment can only be retried for pending orders. Current status: " + order.getOrderStatus());
+        }
+
+        paymentService.retryNgeniusPayment(order);
 
         return getOrderDetails(userId, orderId);
     }

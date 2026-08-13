@@ -25,3 +25,18 @@ app:
   name: VNK App
   password-reset:
     expiry-minutes: 15
+
+# N-Genius (Network International) payment gateway — sandbox credentials.
+# Env vars (NGENIUS_*) still override these values when set.
+ngenius:
+  auth-url: ${NGENIUS_AUTH_URL:https://api-gateway.sandbox.ngenius-payments.com/identity/auth/access-token}
+  api-base-url: ${NGENIUS_API_BASE_URL:https://api-gateway.sandbox.ngenius-payments.com}
+  outlet-ref: ${NGENIUS_OUTLET_REF:b2e1c46c-efbd-47eb-ad53-c72f92d09bf1}
+  api-key: ${NGENIUS_API_KEY:MzZlYWQ3ZjMtOTkxNS00ZDZkLTlhNTYtZTNlNjYyNjdjNGI3OmZkMmNlODcyLWFmM2ItNDgxNS1hMTk0LTZmZjA4M2JhZGZmZA==}
+  action: SALE
+  currency: AED
+  redirect-url: ${NGENIUS_REDIRECT_URL:https://www.abc.com}
+  cancel-url: ${NGENIUS_CANCEL_URL:https://www.abc.com}
+  payment-attempts: 3
+  webhook-header-name: ${NGENIUS_WEBHOOK_HEADER_NAME:X-Webhook-Secret}
+  webhook-header-value: ${NGENIUS_WEBHOOK_HEADER_VALUE:}
