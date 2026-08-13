@@ -1,3 +1,4 @@
+frameworkVersion: "4.39.0"
 org: vnksupplements
 name: vnk-backend
 deployment:
