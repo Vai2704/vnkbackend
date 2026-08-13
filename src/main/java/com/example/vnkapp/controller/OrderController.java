@@ -95,6 +95,25 @@ public class OrderController {
         }
     }
 
+    @PostMapping("/{id}/payment/retry")
+    public ResponseEntity<?> retryPayment(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @PathVariable UUID id) {
+        log.info("Retry payment for order {} by user: {}", id, currentUser.getId());
+        try {
+            OrderResponseDto order = orderService.retryPayment(currentUser.getId(), id);
+            return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, order));
+        } catch (IllegalArgumentException ex) {
+            log.warn("Retry payment failed for order {} by user: {} - {}", id, currentUser.getId(), ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new UserResponseDto(null, ex.getMessage()));
+        } catch (Exception ex) {
+            log.error("Retry payment error for order {} by user: {}", id, currentUser.getId(), ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new UserResponseDto(null, "Can't retry payment due to some issue."));
+        }
+    }
+
     @PostMapping("/{id}/cancel")
     public ResponseEntity<?> cancelOrder(
             @AuthenticationPrincipal AuthenticatedUser currentUser,

@@ -61,6 +61,9 @@ public class Payment extends BaseEntity {
     @Column(name = "gateway_payment_id")
     private String gatewayPaymentId;
 
+    @Column(name = "gateway_payment_url", columnDefinition = "TEXT")
+    private String gatewayPaymentUrl;
+
     @Column(name = "gateway_signature")
     private String gatewaySignature;
 

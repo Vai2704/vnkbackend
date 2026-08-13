@@ -27,6 +27,7 @@ public class SchemaMigrationRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         log.info("Running schema migrations...");
         alterUserMedicationsNullable();
+        updatePaymentsPaymentMethodConstraint();
         log.info("Schema migrations completed.");
     }
 
@@ -37,5 +38,19 @@ public class SchemaMigrationRunner implements ApplicationRunner {
         jdbcTemplate.execute("ALTER TABLE user_medications ALTER COLUMN frequency DROP NOT NULL");
         jdbcTemplate.execute("ALTER TABLE user_medications ALTER COLUMN start_date DROP NOT NULL");
         log.debug("user_medications: dosage, frequency, start_date made nullable");
+    }
+
+    private void updatePaymentsPaymentMethodConstraint() {
+        // Hibernate ddl-auto:update does not refresh enum CHECK constraints when new
+        // PaymentMethod values (e.g. NGENIUS) are added to the Java enum.
+        jdbcTemplate.execute("ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_payment_method_check");
+        jdbcTemplate.execute("""
+                ALTER TABLE payments ADD CONSTRAINT payments_payment_method_check
+                CHECK (payment_method IN (
+                    'CREDIT_CARD', 'DEBIT_CARD', 'UPI', 'NET_BANKING',
+                    'WALLET', 'COD', 'RAZORPAY', 'STRIPE', 'NGENIUS'
+                ))
+                """);
+        log.debug("payments: payment_method check constraint updated to include NGENIUS");
     }
 }

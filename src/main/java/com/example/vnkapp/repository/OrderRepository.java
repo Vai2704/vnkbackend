@@ -34,4 +34,10 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     }
 
     boolean existsByOrderNumber(String orderNumber);
+
+    Optional<Order> findByOrderNumberAndStatus(String orderNumber, Integer status);
+
+    default Optional<Order> findByOrderNumberActive(String orderNumber) {
+        return findByOrderNumberAndStatus(orderNumber, BaseEntity.STATUS_ACTIVE);
+    }
 }

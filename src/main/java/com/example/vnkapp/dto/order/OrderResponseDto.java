@@ -1,7 +1,9 @@
 package com.example.vnkapp.dto.order;
 
 import com.example.vnkapp.entity.Order;
+import com.example.vnkapp.entity.Payment;
 import com.example.vnkapp.enums.order.OrderStatus;
+import com.example.vnkapp.enums.payment.PaymentStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -33,9 +35,11 @@ public record OrderResponseDto(
         String trackingUrl,
         Instant createdAt,
         Instant updatedAt,
-        List<OrderItemResponseDto> items
+        List<OrderItemResponseDto> items,
+        PaymentStatus paymentStatus,
+        String paymentUrl
 ) {
-    public static OrderResponseDto fromEntity(Order order, List<OrderItemResponseDto> items) {
+    public static OrderResponseDto fromEntity(Order order, List<OrderItemResponseDto> items, Payment payment) {
         return new OrderResponseDto(
                 order.getId(),
                 order.getOrderNumber(),
@@ -61,7 +65,9 @@ public record OrderResponseDto(
                 order.getTrackingUrl(),
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
-                items
+                items,
+                payment != null ? payment.getPaymentStatus() : null,
+                payment != null ? payment.getGatewayPaymentUrl() : null
         );
     }
 }
