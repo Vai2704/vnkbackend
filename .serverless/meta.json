@@ -4,6 +4,7 @@
     "servicePath": "C:\\Users\\udbha\\OneDrive\\Desktop\\vaibhav\\vnkbackend\\serverless.containers.yml",
     "serviceConfigFileName": "serverless.containers.yml",
     "service": {
+      "frameworkVersion": "4.39.0",
       "org": "vnksupplements",
       "name": "vnk-backend",
       "deployment": {
@@ -41,7 +42,7 @@
       "serviceProvider": null,
       "instanceParameters": null
     },
-    "serviceRawFile": "org: vnksupplements\nname: vnk-backend\ndeployment:\n  type: aws@1.0\n\n\ncontainers:\n  service-sync:\n    src: ./\n    routing:\n      pathPattern: /*\n      pathHealthCheck: /health/check\n    compute:\n      type: awsFargateEcs\n      awsFargateEcs:\n        memory: 4096\n        cpu: 2048\n        scale:\n          - type: desired\n            desired: 1\n    \n",
+    "serviceRawFile": "frameworkVersion: \"4.39.0\"\norg: vnksupplements\nname: vnk-backend\ndeployment:\n  type: aws@1.0\n\n\ncontainers:\n  service-sync:\n    src: ./\n    routing:\n      pathPattern: /*\n      pathHealthCheck: /health/check\n    compute:\n      type: awsFargateEcs\n      awsFargateEcs:\n        memory: 4096\n        cpu: 2048\n        scale:\n          - type: desired\n            desired: 1\n    \n",
     "command": [
       "deploy"
     ],
