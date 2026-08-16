@@ -1,4 +1,6 @@
 # AWS staging / Fargate deploy (profile: staging)
+# SMTP: set SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME, SPRING_MAIL_PASSWORD
+# on the Fargate task (or Secrets Manager). Username is also used as the "from" address.
 spring:
   datasource:
     url: jdbc:postgresql://vnk-staging.cdesu2c0wyfn.ap-south-1.rds.amazonaws.com:5432/vnk_staging_db
@@ -6,3 +8,15 @@ spring:
     password: vnkstaging25
   jpa:
     show-sql: false
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:noreply@vnksupplements.com}
+    password: ${SPRING_MAIL_PASSWORD:rntiwtvmsfbofmxl}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
