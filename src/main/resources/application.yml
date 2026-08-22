@@ -23,6 +23,13 @@ app:
   name: VNK App
   password-reset:
     expiry-minutes: 15
+  admin:
+    bootstrap:
+      enabled: true
+      username: superadmin
+      email: info@vnkappsupplements.com
+      password: 'Pass@123'
+      full-name: Super Admin
 
 # N-Genius (Network International) payment gateway — sandbox credentials.
 # Env vars (NGENIUS_*) still override these values when set.

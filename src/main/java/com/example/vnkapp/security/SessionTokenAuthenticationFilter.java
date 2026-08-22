@@ -1,7 +1,11 @@
 package com.example.vnkapp.security;
 
+import com.example.vnkapp.entity.Admin;
+import com.example.vnkapp.entity.AdminSession;
 import com.example.vnkapp.entity.User;
 import com.example.vnkapp.entity.UserSession;
+import com.example.vnkapp.repository.AdminRepository;
+import com.example.vnkapp.repository.AdminSessionRepository;
 import com.example.vnkapp.repository.UserRepository;
 import com.example.vnkapp.repository.UserSessionRepository;
 import jakarta.servlet.FilterChain;
@@ -20,7 +24,8 @@ import java.util.Optional;
 
 /**
  * Validates {@code Authorization: Bearer <sessionToken>} against {@link UserSession}
- * and populates {@link org.springframework.security.core.context.SecurityContext}.
+ * or {@link com.example.vnkapp.entity.AdminSession} and populates
+ * {@link org.springframework.security.core.context.SecurityContext}.
  */
 @Component
 public class SessionTokenAuthenticationFilter extends OncePerRequestFilter {
@@ -28,13 +33,19 @@ public class SessionTokenAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final UserSessionRepository userSessionRepository;
+    private final AdminSessionRepository adminSessionRepository;
     private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
 
     public SessionTokenAuthenticationFilter(
             UserSessionRepository userSessionRepository,
-            UserRepository userRepository) {
+            AdminSessionRepository adminSessionRepository,
+            UserRepository userRepository,
+            AdminRepository adminRepository) {
         this.userSessionRepository = userSessionRepository;
+        this.adminSessionRepository = adminSessionRepository;
         this.userRepository = userRepository;
+        this.adminRepository = adminRepository;
     }
 
     @Override
@@ -55,29 +66,70 @@ public class SessionTokenAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        Optional<UserSession> sessionOpt = userSessionRepository.findBySessionToken(token);
-        if (sessionOpt.isEmpty() || !sessionOpt.get().isActive() || sessionOpt.get().isExpired()) {
+        if (authenticateUserSession(token) || authenticateAdminSession(token)) {
+            // authenticated
+        } else {
             filterChain.doFilter(request, response);
             return;
         }
-
-        UserSession session = sessionOpt.get();
-        Optional<User> userOpt = userRepository.findById(session.getUserId());
-        if (userOpt.isEmpty() || !userOpt.get().isActive()) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        AuthenticatedUser principal = new AuthenticatedUser(userOpt.get());
-        UsernamePasswordAuthenticationToken authentication =
-                new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
-        authentication.setDetails(session);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         try {
             filterChain.doFilter(request, response);
         } finally {
             SecurityContextHolder.clearContext();
+        }
+    }
+
+    private boolean authenticateUserSession(String token) {
+        Optional<UserSession> sessionOpt = userSessionRepository.findBySessionToken(token);
+        if (sessionOpt.isEmpty() || !sessionOpt.get().isActive() || sessionOpt.get().isExpired()) {
+            return false;
+        }
+
+        UserSession session = sessionOpt.get();
+        Optional<User> userOpt = userRepository.findById(session.getUserId());
+        if (userOpt.isEmpty() || !userOpt.get().isActive()) {
+            return false;
+        }
+
+        AuthenticatedUser principal = new AuthenticatedUser(userOpt.get());
+        setAuthentication(principal, session);
+        return true;
+    }
+
+    private boolean authenticateAdminSession(String token) {
+        Optional<AdminSession> sessionOpt = adminSessionRepository.findBySessionToken(token);
+        if (sessionOpt.isEmpty() || !sessionOpt.get().isActive() || sessionOpt.get().isExpired()) {
+            return false;
+        }
+
+        AdminSession session = sessionOpt.get();
+        Optional<Admin> adminOpt = adminRepository.findById(session.getAdminId());
+        if (adminOpt.isEmpty() || !adminOpt.get().isActive()) {
+            return false;
+        }
+
+        AuthenticatedAdmin principal = new AuthenticatedAdmin(adminOpt.get());
+        setAuthentication(principal, session);
+        return true;
+    }
+
+    private void setAuthentication(Object principal, Object sessionDetails) {
+        if (principal instanceof AuthenticatedUser authenticatedUser) {
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            authenticatedUser, null, authenticatedUser.getAuthorities());
+            authentication.setDetails(sessionDetails);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            return;
+        }
+
+        if (principal instanceof AuthenticatedAdmin authenticatedAdmin) {
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            authenticatedAdmin, null, authenticatedAdmin.getAuthorities());
+            authentication.setDetails(sessionDetails);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
     }
 }
