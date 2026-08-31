@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.net.URI;
-import java.net.URLEncoder;
+import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -64,7 +65,16 @@ public class NgeniusPaymentService {
                 PAYMENT_MEDIA_TYPE,
                 MediaType.ALL));
 
+        // N-Genius/CloudFront resets HTTP/2 streams (RST_STREAM) on some GETs.
+        HttpClient jdkClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(Duration.ofSeconds(15))
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(jdkClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(30));
+
         this.restClient = RestClient.builder()
+                .requestFactory(requestFactory)
                 .messageConverters(converters -> {
                     converters.clear();
                     converters.add(stringConverter);
@@ -90,39 +100,45 @@ public class NgeniusPaymentService {
     /**
      * GET /transactions/outlets/{outletRef}/orders/{orderRef} — used to verify payment
      * after the hosted page redirects back to the merchant success URL.
+     * N-Genius expects the UUID only (not {@code urn:order:...}).
      */
     public NgeniusOrderResponse getOrder(String orderId) {
         if (orderId == null || orderId.isBlank()) {
             throw new IllegalArgumentException("N-Genius order id is required");
         }
+        String orderRef = toOrderUuid(orderId);
         try {
-            return callGetOrder(orderId, getAccessToken(false));
+            return callGetOrder(orderRef, getAccessToken(false));
         } catch (RestClientResponseException ex) {
             if (ex.getStatusCode().value() == 401) {
                 log.warn("N-Genius rejected access token as unauthorized, refreshing and retrying once");
-                return callGetOrder(orderId, getAccessToken(true));
-            }
-            if (ex.getStatusCode().value() == 404 && orderId.startsWith("urn:order:")) {
-                String uuid = orderId.substring("urn:order:".length());
-                log.info("Retrying N-Genius get-order without urn prefix: {}", uuid);
-                return callGetOrder(uuid, getAccessToken(false));
+                return callGetOrder(orderRef, getAccessToken(true));
             }
             log.error("N-Genius get-order failed: status={}, body={}, orderId={}",
-                    ex.getStatusCode().value(), ex.getResponseBodyAsString(), orderId);
+                    ex.getStatusCode().value(), ex.getResponseBodyAsString(), orderRef);
             throw ex;
         }
     }
 
-    private NgeniusOrderResponse callGetOrder(String orderId, String accessToken) {
-        String encodedOrderId = URLEncoder.encode(orderId, StandardCharsets.UTF_8);
+    private NgeniusOrderResponse callGetOrder(String orderRef, String accessToken) {
         String uri = properties.getApiBaseUrl() + "/transactions/outlets/"
-                + properties.getOutletRef() + "/orders/" + encodedOrderId;
+                + properties.getOutletRef() + "/orders/" + orderRef;
+        log.info("Retrieving N-Genius order {}", uri);
         return restClient.get()
                 .uri(URI.create(uri))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .header(HttpHeaders.ACCEPT, PAYMENT_MEDIA_TYPE.toString())
                 .retrieve()
                 .body(NgeniusOrderResponse.class);
+    }
+
+    private String toOrderUuid(String orderId) {
+        String trimmed = orderId.trim();
+        int lastColon = trimmed.lastIndexOf(':');
+        if (lastColon >= 0 && lastColon < trimmed.length() - 1) {
+            return trimmed.substring(lastColon + 1);
+        }
+        return trimmed;
     }
 
     private NgeniusOrderResponse callCreateOrder(NgeniusOrderRequest orderRequest, String accessToken) {
