@@ -11,5 +11,6 @@ public record CartItemResponseDto(
         String packSize,
         BigDecimal unitPrice,
         Integer quantity,
-        BigDecimal totalPrice
+        BigDecimal totalPrice,
+        String thumbnailImage
 ) {}
