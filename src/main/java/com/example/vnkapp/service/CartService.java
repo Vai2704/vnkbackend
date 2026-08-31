@@ -31,13 +31,16 @@ public class CartService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
+    private final ProductThumbnailService productThumbnailService;
 
     public CartService(CartRepository cartRepository,
                        CartItemRepository cartItemRepository,
-                       ProductRepository productRepository) {
+                       ProductRepository productRepository,
+                       ProductThumbnailService productThumbnailService) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.productRepository = productRepository;
+        this.productThumbnailService = productThumbnailService;
     }
 
     @Transactional
@@ -117,22 +120,10 @@ public class CartService {
         Map<UUID, Product> productMap = productRepository.findAllById(productIds)
                 .stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
+        Map<UUID, String> thumbnails = productThumbnailService.thumbnailsFor(productIds);
 
         List<CartItemResponseDto> items = cartItems.stream()
-                .map(item -> {
-                    Product product = productMap.get(item.getProductId());
-                    BigDecimal totalPrice = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-                    return new CartItemResponseDto(
-                            item.getId(),
-                            item.getProductId(),
-                            product != null ? product.getName() : null,
-                            product != null ? product.getSlug() : null,
-                            product != null ? product.getPackSize() : null,
-                            item.getUnitPrice(),
-                            item.getQuantity(),
-                            totalPrice
-                    );
-                })
+                .map(item -> toCartItemDto(item, productMap.get(item.getProductId()), thumbnails.get(item.getProductId())))
                 .toList();
 
         int totalItems = items.stream().mapToInt(CartItemResponseDto::quantity).sum();
@@ -160,17 +151,27 @@ public class CartService {
                 });
 
         Product product = productRepository.findById(cartItem.getProductId()).orElse(null);
-        BigDecimal totalPrice = cartItem.getUnitPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity()));
+        String thumbnail = productThumbnailService.thumbnailOrFallback(
+                cartItem.getProductId(), productThumbnailService.fromProduct(product));
+        return toCartItemDto(cartItem, product, thumbnail);
+    }
 
+    private CartItemResponseDto toCartItemDto(CartItem item, Product product, String thumbnailImage) {
+        BigDecimal totalPrice = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+        String thumbnail = thumbnailImage;
+        if (thumbnail == null || thumbnail.isBlank()) {
+            thumbnail = productThumbnailService.fromProduct(product);
+        }
         return new CartItemResponseDto(
-                cartItem.getId(),
-                cartItem.getProductId(),
+                item.getId(),
+                item.getProductId(),
                 product != null ? product.getName() : null,
                 product != null ? product.getSlug() : null,
                 product != null ? product.getPackSize() : null,
-                cartItem.getUnitPrice(),
-                cartItem.getQuantity(),
-                totalPrice
+                item.getUnitPrice(),
+                item.getQuantity(),
+                totalPrice,
+                thumbnail
         );
     }
 
