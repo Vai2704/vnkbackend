@@ -47,4 +47,12 @@ public record NgeniusOrderResponse(
         Payment payment = embedded.payment().get(0);
         return payment.reference() != null ? payment.reference() : payment.id();
     }
+
+    @JsonIgnore
+    public String paymentState() {
+        if (embedded == null || embedded.payment() == null || embedded.payment().isEmpty()) {
+            return null;
+        }
+        return embedded.payment().get(0).state();
+    }
 }

@@ -11,17 +11,26 @@ public record OrderItemResponseDto(
         String productName,
         String productSku,
         String productImageUrl,
+        String thumbnailImage,
         Integer quantity,
         BigDecimal unitPrice,
         BigDecimal totalPrice
 ) {
     public static OrderItemResponseDto fromEntity(OrderItem item) {
+        return fromEntity(item, item.getProductImageUrl());
+    }
+
+    public static OrderItemResponseDto fromEntity(OrderItem item, String thumbnailImage) {
+        String thumbnail = (thumbnailImage != null && !thumbnailImage.isBlank())
+                ? thumbnailImage
+                : item.getProductImageUrl();
         return new OrderItemResponseDto(
                 item.getId(),
                 item.getProductId(),
                 item.getProductName(),
                 item.getProductSku(),
                 item.getProductImageUrl(),
+                thumbnail,
                 item.getQuantity(),
                 item.getUnitPrice(),
                 item.getTotalPrice()

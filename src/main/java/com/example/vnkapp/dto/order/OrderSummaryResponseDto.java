@@ -13,15 +13,21 @@ public record OrderSummaryResponseDto(
         OrderStatus orderStatus,
         BigDecimal totalAmount,
         Integer itemCount,
+        String thumbnailImage,
         Instant createdAt
 ) {
     public static OrderSummaryResponseDto fromEntity(Order order, Integer itemCount) {
+        return fromEntity(order, itemCount, null);
+    }
+
+    public static OrderSummaryResponseDto fromEntity(Order order, Integer itemCount, String thumbnailImage) {
         return new OrderSummaryResponseDto(
                 order.getId(),
                 order.getOrderNumber(),
                 order.getOrderStatus(),
                 order.getTotalAmount(),
                 itemCount,
+                thumbnailImage,
                 order.getCreatedAt()
         );
     }

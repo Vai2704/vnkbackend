@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment successful</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 40px 16px; color: #1f2933; }
+    .card { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 8px 24px rgba(0,0,0,.08); text-align: center; }
+    h1 { margin: 0 0 12px; font-size: 1.6rem; }
+    h1.ok { color: #0f7b4a; }
+    h1.wait { color: #b45309; }
+    h1.err { color: #b91c1c; }
+    p { line-height: 1.5; margin: 8px 0; }
+    .meta { margin-top: 24px; font-size: 0.9rem; color: #52606d; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 id="title" class="wait">Confirming payment…</h1>
+    <p id="message">Please wait while we confirm your payment with the gateway.</p>
+    <div class="meta" id="details"></div>
+  </div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref") || params.get("orderRef") || params.get("reference");
+    const title = document.getElementById("title");
+    const message = document.getElementById("message");
+    const details = document.getElementById("details");
+
+    if (ref) {
+      details.textContent = "Reference: " + ref;
+    }
+
+    function show(kind, heading, text) {
+      title.className = kind;
+      title.textContent = heading;
+      message.textContent = text;
+    }
+
+    if (!ref) {
+      show("err", "Payment reference missing", "We could not find an order reference in this page URL.");
+    } else {
+      fetch("/api/payments/ngenius/callback?ref=" + encodeURIComponent(ref))
+        .then(function (res) { return res.json().then(function (body) { return { ok: res.ok, body: body }; }); })
+        .then(function (result) {
+          const data = result.body && result.body.data;
+          if (result.ok && data && data.paymentStatus === "COMPLETED") {
+            show("ok", "Payment successful", data.message || "Your order has been confirmed.");
+            details.textContent = "Order: " + (data.orderNumber || ref)
+              + " | Status: " + data.orderStatus
+              + " | Payment: " + data.paymentStatus;
+            return;
+          }
+          if (result.ok && data) {
+            show("wait", "Payment received", data.message || "Your payment is being confirmed.");
+            details.textContent = "Order: " + (data.orderNumber || ref)
+              + " | Status: " + data.orderStatus
+              + " | Payment: " + data.paymentStatus;
+            return;
+          }
+          show("err", "Could not confirm payment",
+            (result.body && result.body.error) || "Please check your orders in the app.");
+        })
+        .catch(function () {
+          show("err", "Could not confirm payment", "Please check your orders in the app.");
+        });
+    }
+  </script>
+</body>
+</html>

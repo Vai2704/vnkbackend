@@ -37,7 +37,8 @@ public record OrderResponseDto(
         Instant updatedAt,
         List<OrderItemResponseDto> items,
         PaymentStatus paymentStatus,
-        String paymentUrl
+        String paymentUrl,
+        String paymentMessage
 ) {
     public static OrderResponseDto fromEntity(Order order, List<OrderItemResponseDto> items, Payment payment) {
         return new OrderResponseDto(
@@ -67,7 +68,21 @@ public record OrderResponseDto(
                 order.getUpdatedAt(),
                 items,
                 payment != null ? payment.getPaymentStatus() : null,
-                payment != null ? payment.getGatewayPaymentUrl() : null
+                payment != null ? payment.getGatewayPaymentUrl() : null,
+                paymentMessageFor(order, payment)
         );
+    }
+
+    private static String paymentMessageFor(Order order, Payment payment) {
+        if (order.getOrderStatus() != OrderStatus.PENDING) {
+            return null;
+        }
+        PaymentStatus status = payment != null ? payment.getPaymentStatus() : PaymentStatus.PENDING;
+        return switch (status) {
+            case FAILED -> "Payment failed. Please retry payment to confirm this order.";
+            case PROCESSING -> "Payment is being processed. Order details are shown below.";
+            case COMPLETED -> null;
+            default -> "Payment is pending. Please complete payment to confirm this order.";
+        };
     }
 }
