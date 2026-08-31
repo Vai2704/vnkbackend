@@ -23,6 +23,12 @@ app:
   name: VNK App
   password-reset:
     expiry-minutes: 15
+  referral:
+    referee-discount-percent: 10
+    referee-coupon-validity-days: 30
+    referrer-reward-percent: 10
+    referrer-coupon-validity-days: 30
+    min-order-amount: 0
 
 # N-Genius (Network International) payment gateway — sandbox credentials.
 # Env vars (NGENIUS_*) still override these values when set.
@@ -33,8 +39,8 @@ ngenius:
   api-key: ${NGENIUS_API_KEY:MzZlYWQ3ZjMtOTkxNS00ZDZkLTlhNTYtZTNlNjYyNjdjNGI3OmZkMmNlODcyLWFmM2ItNDgxNS1hMTk0LTZmZjA4M2JhZGZmZA==}
   action: SALE
   currency: AED
-  redirect-url: ${NGENIUS_REDIRECT_URL:https://www.abc.com}
-  cancel-url: ${NGENIUS_CANCEL_URL:https://www.abc.com}
+  redirect-url: ${NGENIUS_REDIRECT_URL:https://d1dfsxng7uvrcx.cloudfront.net/payment-success.html}
+  cancel-url: ${NGENIUS_CANCEL_URL:https://d1dfsxng7uvrcx.cloudfront.net/payment-success.html}
   payment-attempts: 3
   webhook-header-name: ${NGENIUS_WEBHOOK_HEADER_NAME:X-Webhook-Secret}
   webhook-header-value: ${NGENIUS_WEBHOOK_HEADER_VALUE:}

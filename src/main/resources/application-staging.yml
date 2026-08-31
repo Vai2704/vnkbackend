@@ -20,3 +20,11 @@ spring:
           starttls:
             enable: true
             required: true
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
+# Set LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_MAIL=DEBUG on the task to troubleshoot SMTP in CloudWatch.
+logging:
+  level:
+    com.example.vnkapp.service.EmailService: INFO
