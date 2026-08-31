@@ -40,4 +40,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     default Optional<Order> findByOrderNumberActive(String orderNumber) {
         return findByOrderNumberAndStatus(orderNumber, BaseEntity.STATUS_ACTIVE);
     }
+
+    long countByUserIdAndOrderStatusAndStatus(UUID userId, OrderStatus orderStatus, Integer status);
 }

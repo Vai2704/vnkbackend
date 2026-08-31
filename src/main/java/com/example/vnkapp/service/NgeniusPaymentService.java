@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -42,6 +44,7 @@ public class NgeniusPaymentService {
     private static final String TOKEN_REQUEST_BODY = "{}";
 
     private final RestClient restClient;
+    private final ObjectMapper objectMapper;
     private final NgeniusProperties properties;
     private final Object tokenLock = new Object();
 
@@ -50,9 +53,9 @@ public class NgeniusPaymentService {
 
     public NgeniusPaymentService(NgeniusProperties properties) {
         this.properties = properties;
-        ObjectMapper objectMapper = new ObjectMapper();
+        this.objectMapper = new ObjectMapper();
         MappingJackson2HttpMessageConverter jacksonConverter =
-                new MappingJackson2HttpMessageConverter(objectMapper);
+                new MappingJackson2HttpMessageConverter(this.objectMapper);
         StringHttpMessageConverter stringConverter = new StringHttpMessageConverter(StandardCharsets.UTF_8);
         stringConverter.setSupportedMediaTypes(List.of(
                 MediaType.TEXT_PLAIN,
@@ -78,10 +81,48 @@ public class NgeniusPaymentService {
                 log.warn("N-Genius rejected access token as unauthorized, refreshing and retrying once");
                 return callCreateOrder(orderRequest, getAccessToken(true));
             }
-            log.error("N-Genius create-order failed: status={}, body={}",
-                    ex.getStatusCode().value(), ex.getResponseBodyAsString());
+            log.error("N-Genius create-order failed: status={}, body={}, request={}",
+                    ex.getStatusCode().value(), ex.getResponseBodyAsString(), toJson(orderRequest));
             throw ex;
         }
+    }
+
+    /**
+     * GET /transactions/outlets/{outletRef}/orders/{orderRef} — used to verify payment
+     * after the hosted page redirects back to the merchant success URL.
+     */
+    public NgeniusOrderResponse getOrder(String orderId) {
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException("N-Genius order id is required");
+        }
+        try {
+            return callGetOrder(orderId, getAccessToken(false));
+        } catch (RestClientResponseException ex) {
+            if (ex.getStatusCode().value() == 401) {
+                log.warn("N-Genius rejected access token as unauthorized, refreshing and retrying once");
+                return callGetOrder(orderId, getAccessToken(true));
+            }
+            if (ex.getStatusCode().value() == 404 && orderId.startsWith("urn:order:")) {
+                String uuid = orderId.substring("urn:order:".length());
+                log.info("Retrying N-Genius get-order without urn prefix: {}", uuid);
+                return callGetOrder(uuid, getAccessToken(false));
+            }
+            log.error("N-Genius get-order failed: status={}, body={}, orderId={}",
+                    ex.getStatusCode().value(), ex.getResponseBodyAsString(), orderId);
+            throw ex;
+        }
+    }
+
+    private NgeniusOrderResponse callGetOrder(String orderId, String accessToken) {
+        String encodedOrderId = URLEncoder.encode(orderId, StandardCharsets.UTF_8);
+        String uri = properties.getApiBaseUrl() + "/transactions/outlets/"
+                + properties.getOutletRef() + "/orders/" + encodedOrderId;
+        return restClient.get()
+                .uri(URI.create(uri))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .header(HttpHeaders.ACCEPT, PAYMENT_MEDIA_TYPE.toString())
+                .retrieve()
+                .body(NgeniusOrderResponse.class);
     }
 
     private NgeniusOrderResponse callCreateOrder(NgeniusOrderRequest orderRequest, String accessToken) {
@@ -164,5 +205,13 @@ public class NgeniusPaymentService {
             return trimmed;
         }
         return "Basic " + trimmed;
+    }
+
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception ex) {
+            return "<unserializable>";
+        }
     }
 }

@@ -60,6 +60,8 @@ public class OrderService {
     private final PaymentRepository paymentRepository;
     private final PaymentService paymentService;
     private final Optional<EmailService> emailService;
+    private final CouponService couponService;
+    private final ProductThumbnailService productThumbnailService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public OrderService(OrderRepository orderRepository,
@@ -72,7 +74,9 @@ public class OrderService {
                         UserRepository userRepository,
                         PaymentRepository paymentRepository,
                         PaymentService paymentService,
-                        Optional<EmailService> emailService) {
+                        Optional<EmailService> emailService,
+                        CouponService couponService,
+                        ProductThumbnailService productThumbnailService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.cartRepository = cartRepository;
@@ -84,6 +88,8 @@ public class OrderService {
         this.paymentRepository = paymentRepository;
         this.paymentService = paymentService;
         this.emailService = emailService;
+        this.couponService = couponService;
+        this.productThumbnailService = productThumbnailService;
     }
 
     @Transactional
@@ -124,7 +130,7 @@ public class OrderService {
         // Fetch primary images for all products
         Map<UUID, String> productImageMap = productImageRepository.findPrimaryByProductIds(productIds)
                 .stream()
-                .collect(Collectors.toMap(ProductImage::getProductId, ProductImage::getImageUrl));
+                .collect(Collectors.toMap(ProductImage::getProductId, ProductImage::getImageUrl, (a, b) -> a));
 
         // 5. Validate all products exist and have sufficient stock
         for (CartItem cartItem : cartItems) {
@@ -148,8 +154,11 @@ public class OrderService {
             subtotal = subtotal.add(itemTotal);
         }
 
-        // TODO: Apply coupon discount if couponId is provided
         BigDecimal discountAmount = BigDecimal.ZERO;
+        if (dto.couponId() != null) {
+            discountAmount = couponService.calculateDiscount(dto.couponId(), userId, subtotal);
+            log.info("Applied coupon {} for user {}: discount={}", dto.couponId(), userId, discountAmount);
+        }
 
         // TODO: Calculate shipping based on address/cart weight
         BigDecimal shippingAmount = BigDecimal.ZERO;
@@ -161,6 +170,11 @@ public class OrderService {
                 .subtract(discountAmount)
                 .add(shippingAmount)
                 .add(taxAmount);
+        if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
+            totalAmount = BigDecimal.ZERO;
+        }
+
+        final BigDecimal orderTotal = totalAmount;
 
         // 7. Generate order number
         String orderNumber = generateOrderNumber();
@@ -190,6 +204,10 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         log.info("Order created: {}, orderNumber: {}, total: {}", savedOrder.getId(), orderNumber, totalAmount);
+
+        if (dto.couponId() != null) {
+            couponService.markCouponUsed(dto.couponId());
+        }
 
         // 9. Create order items and update product stock
         for (CartItem cartItem : cartItems) {
@@ -227,7 +245,7 @@ public class OrderService {
         // 11. Initiate payment with the gateway. Throws (rolling back the whole order) if the
         // gateway session can't be created, since an order the customer has no way to pay for
         // is worse than not creating it in the first place.
-        paymentService.initiateNgeniusPayment(savedOrder);
+        paymentService.initiateNgeniusPayment(savedOrder, user);
 
         // 12. Send order confirmation email (if email service is configured)
         if (user != null) {
@@ -243,7 +261,7 @@ public class OrderService {
                     user.getEmail(),
                     user.getUsername(),
                     orderNumber,
-                    totalAmount.toString(),
+                    orderTotal.toString(),
                     shippingAddressFormatted
             ));
         }
@@ -268,7 +286,13 @@ public class OrderService {
         return orders.map(order -> {
             List<OrderItem> items = orderItemRepository.findByOrderIdActive(order.getId());
             int itemCount = items.stream().mapToInt(OrderItem::getQuantity).sum();
-            return OrderSummaryResponseDto.fromEntity(order, itemCount);
+            String thumbnailImage = null;
+            if (!items.isEmpty()) {
+                OrderItem first = items.get(0);
+                thumbnailImage = productThumbnailService.thumbnailOrFallback(
+                        first.getProductId(), first.getProductImageUrl());
+            }
+            return OrderSummaryResponseDto.fromEntity(order, itemCount, thumbnailImage);
         });
     }
 
@@ -282,14 +306,27 @@ public class OrderService {
                 });
 
         List<OrderItem> orderItems = orderItemRepository.findByOrderIdActive(order.getId());
+        Map<UUID, String> thumbnails = productThumbnailService.thumbnailsFor(
+                orderItems.stream().map(OrderItem::getProductId).toList());
 
         List<OrderItemResponseDto> items = orderItems.stream()
-                .map(OrderItemResponseDto::fromEntity)
+                .map(item -> OrderItemResponseDto.fromEntity(
+                        item,
+                        firstNonBlank(thumbnails.get(item.getProductId()), item.getProductImageUrl())))
                 .toList();
 
         Payment payment = paymentRepository.findByOrderIdActive(order.getId()).orElse(null);
 
         return OrderResponseDto.fromEntity(order, items, payment);
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
     @Transactional

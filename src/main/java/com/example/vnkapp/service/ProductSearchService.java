@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -23,11 +24,14 @@ public class ProductSearchService {
 
     private final ProductRepository productRepository;
     private final WishlistRepository wishlistRepository;
+    private final ProductThumbnailService productThumbnailService;
 
     public ProductSearchService(ProductRepository productRepository,
-                                WishlistRepository wishlistRepository) {
+                                WishlistRepository wishlistRepository,
+                                ProductThumbnailService productThumbnailService) {
         this.productRepository = productRepository;
         this.wishlistRepository = wishlistRepository;
+        this.productThumbnailService = productThumbnailService;
     }
 
     @Transactional(readOnly = true)
@@ -45,11 +49,25 @@ public class ProductSearchService {
                 ? wishlistRepository.findWishlistedProductIds(userId)
                 : Collections.emptySet();
 
-        Page<ProductSummaryDto> results = productRepository
-                .searchActiveProducts(query.trim(), pageable)
-                .map(p -> ProductSummaryDto.fromEntity(p, wishlisted.contains(p.getId())));
+        var products = productRepository.searchActiveProducts(query.trim(), pageable);
+        Map<UUID, String> thumbnails = productThumbnailService.thumbnailsFor(
+                products.getContent().stream().map(p -> p.getId()).toList());
+
+        Page<ProductSummaryDto> results = products.map(p -> ProductSummaryDto.fromEntity(
+                p,
+                wishlisted.contains(p.getId()),
+                firstNonBlank(thumbnails.get(p.getId()), productThumbnailService.fromProduct(p))));
 
         log.info("Search '{}' returned {} results (page {}/{})", query, results.getTotalElements(), page, results.getTotalPages());
         return results;
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 }

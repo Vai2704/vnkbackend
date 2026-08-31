@@ -1,11 +1,13 @@
 package com.example.vnkapp.service;
 
 import com.example.vnkapp.config.NgeniusProperties;
+import com.example.vnkapp.dto.payment.PaymentCallbackResponseDto;
 import com.example.vnkapp.dto.payment.ngenius.NgeniusOrderRequest;
 import com.example.vnkapp.dto.payment.ngenius.NgeniusOrderResponse;
 import com.example.vnkapp.dto.payment.ngenius.NgeniusWebhookPayload;
 import com.example.vnkapp.entity.Order;
 import com.example.vnkapp.entity.Payment;
+import com.example.vnkapp.entity.User;
 import com.example.vnkapp.enums.order.OrderStatus;
 import com.example.vnkapp.enums.payment.PaymentMethod;
 import com.example.vnkapp.enums.payment.PaymentStatus;
@@ -23,6 +25,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Orchestrates payment-gateway order creation for our orders and reconciles payment state
@@ -57,20 +60,45 @@ public class PaymentService {
             Map.entry("PARTIALLY_REFUNDED", PaymentStatus.PARTIALLY_REFUNDED)
     );
 
+    private static final Map<String, PaymentStatus> PAYMENT_STATE_MAP = Map.ofEntries(
+            Map.entry("PURCHASED", PaymentStatus.COMPLETED),
+            Map.entry("CAPTURED", PaymentStatus.COMPLETED),
+            Map.entry("APM_PAYMENT_ACCEPTED", PaymentStatus.COMPLETED),
+            Map.entry("AUTHORISED", PaymentStatus.PROCESSING),
+            Map.entry("PARTIALLY_CAPTURED", PaymentStatus.PROCESSING),
+            Map.entry("STARTED", PaymentStatus.PENDING),
+            Map.entry("AWAIT_3DS", PaymentStatus.PENDING),
+            Map.entry("FAILED", PaymentStatus.FAILED),
+            Map.entry("DECLINED", PaymentStatus.FAILED),
+            Map.entry("AUTHORISATION_FAILED", PaymentStatus.FAILED),
+            Map.entry("PURCHASE_DECLINED", PaymentStatus.FAILED),
+            Map.entry("PURCHASE_FAILED", PaymentStatus.FAILED),
+            Map.entry("CAPTURE_FAILED", PaymentStatus.FAILED),
+            Map.entry("CANCELLED", PaymentStatus.FAILED),
+            Map.entry("REFUNDED", PaymentStatus.REFUNDED),
+            Map.entry("PARTIALLY_REFUNDED", PaymentStatus.PARTIALLY_REFUNDED)
+    );
+
+    private static final Set<String> SUCCESS_PAYMENT_STATES = Set.of(
+            "PURCHASED", "CAPTURED", "APM_PAYMENT_ACCEPTED");
+
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
     private final NgeniusPaymentService ngeniusPaymentService;
     private final NgeniusProperties properties;
+    private final ReferralService referralService;
     private final ObjectMapper gatewayObjectMapper = new ObjectMapper();
 
     public PaymentService(PaymentRepository paymentRepository,
                            OrderRepository orderRepository,
                            NgeniusPaymentService ngeniusPaymentService,
-                           NgeniusProperties properties) {
+                           NgeniusProperties properties,
+                           ReferralService referralService) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.ngeniusPaymentService = ngeniusPaymentService;
         this.properties = properties;
+        this.referralService = referralService;
     }
 
     /**
@@ -81,12 +109,33 @@ public class PaymentService {
      */
     @Transactional
     public Payment initiateNgeniusPayment(Order order) {
+        return initiateNgeniusPayment(order, null);
+    }
+
+    /**
+     * Replaces a stale/failed payment session with a new N-Genius hosted-page link for a
+     * pending order that has not been paid yet.
+     */
+    @Transactional
+    public Payment retryNgeniusPayment(Order order) {
+        paymentRepository.findByOrderIdActive(order.getId()).ifPresent(existing -> {
+            if (existing.getPaymentStatus() == PaymentStatus.COMPLETED) {
+                throw new IllegalArgumentException("Order is already paid");
+            }
+            existing.setStatus(com.example.vnkapp.entity.BaseEntity.STATUS_INACTIVE);
+            paymentRepository.save(existing);
+        });
+        return initiateNgeniusPayment(order);
+    }
+
+    @Transactional
+    public Payment initiateNgeniusPayment(Order order, User user) {
         if (!properties.isConfigured()) {
             throw new IllegalStateException(
                     "Payment gateway is not configured. Set NGENIUS_API_KEY and NGENIUS_OUTLET_REF.");
         }
 
-        NgeniusOrderRequest request = buildOrderRequest(order);
+        NgeniusOrderRequest request = buildOrderRequest(order, user);
 
         NgeniusOrderResponse response;
         try {
@@ -122,22 +171,6 @@ public class PaymentService {
         return saved;
     }
 
-    /**
-     * Replaces a stale/failed payment session with a new N-Genius hosted-page link for a
-     * pending order that has not been paid yet.
-     */
-    @Transactional
-    public Payment retryNgeniusPayment(Order order) {
-        paymentRepository.findByOrderIdActive(order.getId()).ifPresent(existing -> {
-            if (existing.getPaymentStatus() == PaymentStatus.COMPLETED) {
-                throw new IllegalArgumentException("Order is already paid");
-            }
-            existing.setStatus(com.example.vnkapp.entity.BaseEntity.STATUS_INACTIVE);
-            paymentRepository.save(existing);
-        });
-        return initiateNgeniusPayment(order);
-    }
-
     public boolean isValidWebhookRequest(HttpServletRequest request) {
         String expected = properties.getWebhookHeaderValue();
         if (expected == null || expected.isBlank()) {
@@ -145,6 +178,72 @@ public class PaymentService {
             return true;
         }
         return expected.equals(request.getHeader(properties.getWebhookHeaderName()));
+    }
+
+    /**
+     * Called from the hosted-page success URL. Looks up the order, asks N-Genius for the
+     * current payment state, and marks the order confirmed only when the gateway says paid.
+     */
+    @Transactional
+    public PaymentCallbackResponseDto confirmFromRedirect(String ref) {
+        if (ref == null || ref.isBlank()) {
+            throw new IllegalArgumentException("Payment reference is missing from the redirect.");
+        }
+
+        Order order = resolveOrderFromRedirectRef(ref.trim());
+        if (order == null) {
+            throw new IllegalArgumentException("No order found for payment reference: " + ref);
+        }
+
+        Payment payment = paymentRepository.findByOrderIdActive(order.getId()).orElse(null);
+        if (payment == null) {
+            throw new IllegalArgumentException("No payment record found for order: " + order.getOrderNumber());
+        }
+
+        if (payment.getPaymentStatus() == PaymentStatus.COMPLETED
+                && order.getOrderStatus() == OrderStatus.CONFIRMED) {
+            return new PaymentCallbackResponseDto(
+                    order.getOrderNumber(),
+                    order.getOrderStatus(),
+                    payment.getPaymentStatus(),
+                    null,
+                    "Payment already confirmed.");
+        }
+
+        if (payment.getGatewayOrderId() == null || payment.getGatewayOrderId().isBlank()) {
+            throw new IllegalStateException("Payment is missing the N-Genius order id.");
+        }
+
+        NgeniusOrderResponse gatewayOrder;
+        try {
+            gatewayOrder = ngeniusPaymentService.getOrder(payment.getGatewayOrderId());
+        } catch (Exception ex) {
+            log.error("Failed to retrieve N-Genius order {} for {}", payment.getGatewayOrderId(),
+                    order.getOrderNumber(), ex);
+            throw new IllegalStateException("Unable to verify payment with the payment gateway. Please try again.");
+        }
+
+        String gatewayState = gatewayOrder != null ? gatewayOrder.paymentState() : null;
+        PaymentStatus mappedStatus = gatewayState != null
+                ? PAYMENT_STATE_MAP.getOrDefault(gatewayState.toUpperCase(), PaymentStatus.PENDING)
+                : PaymentStatus.PENDING;
+
+        if (gatewayState != null && SUCCESS_PAYMENT_STATES.contains(gatewayState.toUpperCase())) {
+            mappedStatus = PaymentStatus.COMPLETED;
+        }
+
+        applyPaymentStatus(order, payment, mappedStatus, toJson(gatewayOrder), gatewayState);
+        if (gatewayOrder != null && gatewayOrder.paymentId() != null) {
+            payment.setGatewayPaymentId(gatewayOrder.paymentId());
+            paymentRepository.save(payment);
+        }
+
+        return new PaymentCallbackResponseDto(
+                order.getOrderNumber(),
+                order.getOrderStatus(),
+                payment.getPaymentStatus(),
+                gatewayState,
+                callbackMessage(order, payment, gatewayState));
     }
 
     @Transactional
@@ -174,31 +273,70 @@ public class PaymentService {
             return;
         }
 
-        payment.setPaymentStatus(newStatus);
         if (payload.order().id() != null) {
             payment.setGatewayOrderId(payload.order().id());
         }
         applyGatewayPaymentDetails(payment, payload);
-        payment.setGatewayResponse(toJson(payload));
+        applyPaymentStatus(order, payment, newStatus, toJson(payload), payload.eventName());
+        log.info("Processed N-Genius webhook eventId={} '{}' for order {}: paymentStatus={}",
+                payload.eventId(), payload.eventName(), order.getOrderNumber(), newStatus);
+    }
+
+    private void applyPaymentStatus(Order order, Payment payment, PaymentStatus newStatus,
+                                    String gatewayResponse, String reason) {
+        payment.setPaymentStatus(newStatus);
+        if (gatewayResponse != null) {
+            payment.setGatewayResponse(gatewayResponse);
+        }
 
         switch (newStatus) {
             case COMPLETED -> {
-                payment.setPaidAt(Instant.now());
+                if (payment.getPaidAt() == null) {
+                    payment.setPaidAt(Instant.now());
+                }
                 order.setOrderStatus(OrderStatus.CONFIRMED);
             }
-            case FAILED -> payment.setFailureReason(payload.eventName());
+            case FAILED -> payment.setFailureReason(reason);
             case REFUNDED -> {
                 payment.setRefundedAt(Instant.now());
                 order.setOrderStatus(OrderStatus.REFUNDED);
             }
             case PARTIALLY_REFUNDED -> payment.setRefundedAt(Instant.now());
-            default -> { /* PROCESSING - no side effects beyond the status update above */ }
+            default -> { /* PENDING / PROCESSING */ }
         }
 
         paymentRepository.save(payment);
         orderRepository.save(order);
-        log.info("Processed N-Genius webhook eventId={} '{}' for order {}: paymentStatus={}",
-                payload.eventId(), payload.eventName(), order.getOrderNumber(), newStatus);
+
+        if (newStatus == PaymentStatus.COMPLETED) {
+            referralService.completeReferralOnFirstPaidOrder(order.getUserId(), order.getId());
+        }
+    }
+
+    private Order resolveOrderFromRedirectRef(String ref) {
+        Optional<Order> byOrderNumber = orderRepository.findByOrderNumberActive(ref);
+        if (byOrderNumber.isPresent()) {
+            return byOrderNumber.get();
+        }
+
+        Optional<Payment> byGatewayOrderId = paymentRepository.findByGatewayOrderId(ref);
+        if (byGatewayOrderId.isEmpty() && !ref.startsWith("urn:order:")) {
+            byGatewayOrderId = paymentRepository.findByGatewayOrderId("urn:order:" + ref);
+        }
+        return byGatewayOrderId
+                .flatMap(payment -> orderRepository.findById(payment.getOrderId()))
+                .orElse(null);
+    }
+
+    private String callbackMessage(Order order, Payment payment, String gatewayState) {
+        if (payment.getPaymentStatus() == PaymentStatus.COMPLETED) {
+            return "Payment confirmed. Your order is now confirmed.";
+        }
+        if (payment.getPaymentStatus() == PaymentStatus.FAILED) {
+            return "Payment was not successful. You can retry payment from your orders.";
+        }
+        return "Payment is still " + (gatewayState != null ? gatewayState.toLowerCase() : "pending")
+                + ". Order remains " + order.getOrderStatus() + " until the gateway confirms capture.";
     }
 
     private Order resolveOrderFromWebhook(NgeniusWebhookPayload.Order webhookOrder) {
@@ -252,30 +390,39 @@ public class PaymentService {
         return null;
     }
 
-    private NgeniusOrderRequest buildOrderRequest(Order order) {
+    private NgeniusOrderRequest buildOrderRequest(Order order, User user) {
         NgeniusOrderRequest.Amount amount = new NgeniusOrderRequest.Amount(
                 properties.getCurrency(), toMinorUnits(order.getTotalAmount()));
 
+        // showPayerName=true requires non-blank billing firstName AND lastName.
         NgeniusOrderRequest.MerchantAttributes merchantAttributes = new NgeniusOrderRequest.MerchantAttributes(
                 String.valueOf(properties.getPaymentAttempts()),
                 properties.getCancelUrl(),
                 properties.getRedirectUrl(),
                 true);
 
+        String sourceName = firstNonBlank(
+                order.getShippingFullName(),
+                user != null ? user.getUsername() : null,
+                "Customer");
+        String[] nameParts = splitPayerName(sourceName);
+
         NgeniusOrderRequest.BillingAddress billingAddress = new NgeniusOrderRequest.BillingAddress(
-                firstNameOf(order.getShippingFullName()),
-                lastNameOf(order.getShippingFullName()),
+                nameParts[0],
+                nameParts[1],
                 order.getShippingCity(),
                 order.getShippingState(),
                 order.getShippingCountry(),
                 countryCodeOf(order.getShippingCountry()),
                 order.getShippingPostalCode());
 
+        String email = user != null ? firstNonBlank(user.getEmail()) : null;
+
         return new NgeniusOrderRequest(
                 properties.getAction(),
                 amount,
                 order.getOrderNumber(),
-                null,
+                email,
                 merchantAttributes,
                 billingAddress);
     }
@@ -284,19 +431,15 @@ public class PaymentService {
         return amount.movePointRight(2).setScale(0, RoundingMode.HALF_UP).longValueExact();
     }
 
-    private String firstNameOf(String fullName) {
-        if (fullName == null || fullName.isBlank()) {
-            return null;
-        }
-        return fullName.trim().split("\\s+", 2)[0];
-    }
-
-    private String lastNameOf(String fullName) {
-        if (fullName == null || fullName.isBlank()) {
-            return null;
-        }
+    /**
+     * N-Genius rejects blank lastName when showPayerName is requested. A single-token
+     * shipping name used to omit lastName entirely because of JsonInclude.NON_NULL.
+     */
+    private String[] splitPayerName(String fullName) {
         String[] parts = fullName.trim().split("\\s+", 2);
-        return parts.length > 1 ? parts[1] : null;
+        String firstName = parts[0];
+        String lastName = parts.length > 1 && !parts[1].isBlank() ? parts[1] : firstName;
+        return new String[] { firstName, lastName };
     }
 
     private String countryCodeOf(String country) {

@@ -23,8 +23,14 @@ public record ProductSummaryDto(
         String thumbnailImage
 ) {
     public static ProductSummaryDto fromEntity(Product product, boolean isWishlisted) {
-        List<String> imageUrls = product.getImageUrls();
-        String thumbnailImage = (imageUrls != null && !imageUrls.isEmpty()) ? imageUrls.get(0) : null;
+        return fromEntity(product, isWishlisted, null);
+    }
+
+    public static ProductSummaryDto fromEntity(Product product, boolean isWishlisted, String thumbnailImage) {
+        if (thumbnailImage == null || thumbnailImage.isBlank()) {
+            List<String> imageUrls = product.getImageUrls();
+            thumbnailImage = (imageUrls != null && !imageUrls.isEmpty()) ? imageUrls.get(0) : null;
+        }
         return new ProductSummaryDto(
                 product.getId(),
                 product.getCategoryId(),
