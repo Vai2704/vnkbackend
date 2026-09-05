@@ -10,6 +10,7 @@ public record WishlistItemResponseDto(
         String productName,
         String productSlug,
         BigDecimal price,
+        String currencySymbol,
         Boolean inStock,
         Instant addedAt
 ) {}
