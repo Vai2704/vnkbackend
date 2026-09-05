@@ -10,6 +10,7 @@ public record CartItemResponseDto(
         String productSlug,
         String packSize,
         BigDecimal unitPrice,
+        String currencySymbol,
         Integer quantity,
         BigDecimal totalPrice,
         String thumbnailImage

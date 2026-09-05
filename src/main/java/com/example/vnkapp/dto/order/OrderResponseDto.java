@@ -19,6 +19,7 @@ public record OrderResponseDto(
         BigDecimal shippingAmount,
         BigDecimal taxAmount,
         BigDecimal totalAmount,
+        String currencySymbol,
         String shippingFullName,
         String shippingPhone,
         String shippingAddress,
@@ -50,6 +51,7 @@ public record OrderResponseDto(
                 order.getShippingAmount(),
                 order.getTaxAmount(),
                 order.getTotalAmount(),
+                resolveCurrencySymbol(order.getCurrencySymbol()),
                 order.getShippingFullName(),
                 order.getShippingPhone(),
                 order.getShippingAddress(),
@@ -84,5 +86,12 @@ public record OrderResponseDto(
             case COMPLETED -> null;
             default -> "Payment is pending. Please complete payment to confirm this order.";
         };
+    }
+
+    private static String resolveCurrencySymbol(String currencySymbol) {
+        if (currencySymbol == null || currencySymbol.isBlank()) {
+            return "AED";
+        }
+        return currencySymbol;
     }
 }

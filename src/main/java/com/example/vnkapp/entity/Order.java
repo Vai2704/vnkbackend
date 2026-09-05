@@ -65,6 +65,11 @@ public class Order extends BaseEntity {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(name = "currency_symbol", nullable = false, length = 16,
+            columnDefinition = "varchar(16) not null default 'AED'")
+    @Builder.Default
+    private String currencySymbol = "AED";
+
     @Column(name = "shipping_full_name")
     private String shippingFullName;
 

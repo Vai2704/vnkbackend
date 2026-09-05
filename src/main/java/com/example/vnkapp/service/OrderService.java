@@ -15,6 +15,7 @@ import com.example.vnkapp.entity.Product;
 import com.example.vnkapp.entity.ProductImage;
 import com.example.vnkapp.entity.User;
 import com.example.vnkapp.enums.order.OrderStatus;
+import com.example.vnkapp.enums.payment.PaymentStatus;
 import com.example.vnkapp.repository.AddressRepository;
 import com.example.vnkapp.repository.CartItemRepository;
 import com.example.vnkapp.repository.CartRepository;
@@ -34,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -179,6 +181,9 @@ public class OrderService {
         // 7. Generate order number
         String orderNumber = generateOrderNumber();
 
+        Product firstProduct = productMap.get(cartItems.get(0).getProductId());
+        String orderCurrencySymbol = currencySymbolOf(firstProduct);
+
         // 8. Create order
         Order order = Order.builder()
                 .orderNumber(orderNumber)
@@ -191,6 +196,7 @@ public class OrderService {
                 .shippingAmount(shippingAmount)
                 .taxAmount(taxAmount)
                 .totalAmount(totalAmount)
+                .currencySymbol(orderCurrencySymbol)
                 .shippingFullName(address.getFullName())
                 .shippingPhone(address.getPhone())
                 .shippingAddress(address.getAddressLine1() +
@@ -222,6 +228,7 @@ public class OrderService {
                     .productImageUrl(imageUrl)
                     .quantity(cartItem.getQuantity())
                     .unitPrice(product.getPrice())
+                    .currencySymbol(currencySymbolOf(product))
                     .totalPrice(product.getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity())))
                     .build();
 
@@ -245,9 +252,9 @@ public class OrderService {
         // 11. Initiate payment with the gateway. Throws (rolling back the whole order) if the
         // gateway session can't be created, since an order the customer has no way to pay for
         // is worse than not creating it in the first place.
-        paymentService.initiateNgeniusPayment(savedOrder, user);
+        Payment payment = paymentService.initiateNgeniusPayment(savedOrder, user);
 
-        // 12. Send order confirmation email (if email service is configured)
+        // 12. Send order confirmation email with the hosted payment link
         if (user != null) {
             String shippingAddressFormatted = String.format("%s\n%s\n%s, %s %s\n%s",
                     savedOrder.getShippingFullName(),
@@ -262,7 +269,8 @@ public class OrderService {
                     user.getUsername(),
                     orderNumber,
                     orderTotal.toString(),
-                    shippingAddressFormatted
+                    shippingAddressFormatted,
+                    payment.getGatewayPaymentUrl()
             ));
         }
 
@@ -294,6 +302,33 @@ public class OrderService {
             }
             return OrderSummaryResponseDto.fromEntity(order, itemCount, thumbnailImage);
         });
+    }
+
+    /**
+     * Used by GET /api/orders/{id}. For pending unpaid orders, creates a fresh N-Genius
+     * hosted-page link so the customer is not sent an expired session, then returns the
+     * full order including {@code paymentMessage} and {@code paymentUrl}.
+     */
+    @Transactional
+    public OrderResponseDto getOrderDetailsRefreshingPayment(UUID userId, UUID orderId) {
+        Order order = orderRepository.findByIdAndUserIdActive(orderId, userId)
+                .orElseThrow(() -> {
+                    log.warn("Order {} not found for user: {}", orderId, userId);
+                    return new IllegalArgumentException("Order not found");
+                });
+
+        if (order.getOrderStatus() == OrderStatus.PENDING && shouldRefreshPaymentLink(order.getId())) {
+            User user = userRepository.findById(userId).orElse(null);
+            try {
+                paymentService.retryNgeniusPayment(order, user);
+                log.info("Created a new payment link for pending order {}", order.getOrderNumber());
+            } catch (Exception ex) {
+                log.error("Failed to create a new payment link for pending order {}",
+                        order.getOrderNumber(), ex);
+            }
+        }
+
+        return getOrderDetails(userId, orderId);
     }
 
     @Transactional(readOnly = true)
@@ -382,9 +417,36 @@ public class OrderService {
                     "Payment can only be retried for pending orders. Current status: " + order.getOrderStatus());
         }
 
-        paymentService.retryNgeniusPayment(order);
+        User user = userRepository.findById(userId).orElse(null);
+        paymentService.retryNgeniusPayment(order, user);
 
         return getOrderDetails(userId, orderId);
+    }
+
+    private static final Duration PAYMENT_LINK_REUSE_WINDOW = Duration.ofMinutes(15);
+
+    private boolean shouldRefreshPaymentLink(UUID orderId) {
+        Payment payment = paymentRepository.findByOrderIdActive(orderId).orElse(null);
+        if (payment == null || payment.getGatewayPaymentUrl() == null
+                || payment.getGatewayPaymentUrl().isBlank()) {
+            return true;
+        }
+        PaymentStatus status = payment.getPaymentStatus();
+        if (status == PaymentStatus.FAILED) {
+            return true;
+        }
+        if (status != PaymentStatus.PENDING) {
+            return false;
+        }
+        Instant createdAt = payment.getCreatedAt();
+        return createdAt == null || createdAt.isBefore(Instant.now().minus(PAYMENT_LINK_REUSE_WINDOW));
+    }
+
+    private String currencySymbolOf(Product product) {
+        if (product == null || product.getCurrencySymbol() == null || product.getCurrencySymbol().isBlank()) {
+            return "AED";
+        }
+        return product.getCurrencySymbol().trim();
     }
 
     private String generateOrderNumber() {

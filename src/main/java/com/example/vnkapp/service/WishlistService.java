@@ -94,6 +94,7 @@ public class WishlistService {
                             product != null ? product.getName() : null,
                             product != null ? product.getSlug() : null,
                             product != null ? product.getPrice() : null,
+                            product != null ? product.getCurrencySymbol() : null,
                             product != null && product.getStockQuantity() > 0,
                             item.getCreatedAt()
                     );

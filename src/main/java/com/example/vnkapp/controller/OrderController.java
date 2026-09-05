@@ -82,7 +82,7 @@ public class OrderController {
             @PathVariable UUID id) {
         log.info("Get order {} for user: {}", id, currentUser.getId());
         try {
-            OrderResponseDto order = orderService.getOrderDetails(currentUser.getId(), id);
+            OrderResponseDto order = orderService.getOrderDetailsRefreshingPayment(currentUser.getId(), id);
             return ResponseEntity.ok(new ApiResponseDto<>("Ok", null, order));
         } catch (IllegalArgumentException ex) {
             log.warn("Order {} not found for user: {}", id, currentUser.getId());
