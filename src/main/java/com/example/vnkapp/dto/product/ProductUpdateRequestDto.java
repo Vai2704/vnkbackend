@@ -2,6 +2,7 @@ package com.example.vnkapp.dto.product;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -21,6 +22,9 @@ public record ProductUpdateRequestDto(
 
         @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than 0")
         BigDecimal price,
+
+        @Size(max = 16, message = "Currency symbol must be at most 16 characters")
+        String currencySymbol,
 
         BigDecimal compareAtPrice,
 

@@ -46,6 +46,11 @@ public class OrderItem extends BaseEntity {
     @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal unitPrice;
 
+    @Column(name = "currency_symbol", nullable = false, length = 16,
+            columnDefinition = "varchar(16) not null default 'AED'")
+    @Builder.Default
+    private String currencySymbol = "AED";
+
     @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalPrice;
 }

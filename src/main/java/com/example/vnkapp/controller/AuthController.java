@@ -3,6 +3,7 @@ package com.example.vnkapp.controller;
 import com.example.vnkapp.dto.common.ApiResponseDto;
 import com.example.vnkapp.dto.user.ForgotPasswordRequestDto;
 import com.example.vnkapp.dto.user.LoginResponseDto;
+import com.example.vnkapp.dto.user.RegisterResponseDto;
 import com.example.vnkapp.dto.user.ResetPasswordRequestDto;
 import com.example.vnkapp.dto.user.UserLoginRequestDto;
 import com.example.vnkapp.dto.user.UserRegisterRequestDto;
@@ -37,13 +38,17 @@ public class AuthController {
     public ResponseEntity<?> register(@Valid @RequestBody UserRegisterRequestDto request) {
         log.info("Register request for email: {}", request.email());
         try {
-            LoginResponseDto loginResponse = userService.register(request);
+            RegisterResponseDto registerResponse = userService.register(request);
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(new ApiResponseDto<>("Ok", null, loginResponse));
+                    .body(new ApiResponseDto<>("Ok", null, registerResponse));
         } catch (DataIntegrityViolationException ex) {
             log.warn("Register failed - email already in use: {}", request.email());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new UserResponseDto(null, "Email already in use."));
+        } catch (IllegalArgumentException ex) {
+            log.warn("Register failed for email: {} - {}", request.email(), ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new UserResponseDto(null, ex.getMessage()));
         } catch (Exception ex) {
             log.error("Register error for email: {}", request.email(), ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

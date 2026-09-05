@@ -97,6 +97,7 @@ public class ProductService {
                 .description(dto.description())
                 .shortDescription(dto.shortDescription())
                 .price(dto.price())
+                .currencySymbol(resolveCurrencySymbol(dto.currencySymbol()))
                 .compareAtPrice(dto.compareAtPrice())
                 .costPrice(dto.costPrice())
                 .stockQuantity(dto.stockQuantity() != null ? dto.stockQuantity() : 0)
@@ -169,6 +170,10 @@ public class ProductService {
 
         if (dto.price() != null) {
             product.setPrice(dto.price());
+        }
+
+        if (dto.currencySymbol() != null && !dto.currencySymbol().isBlank()) {
+            product.setCurrencySymbol(dto.currencySymbol().trim());
         }
 
         if (dto.compareAtPrice() != null) {
@@ -316,5 +321,12 @@ public class ProductService {
         String normalized = Normalizer.normalize(noWhitespace, Normalizer.Form.NFD);
         String slug = NON_LATIN.matcher(normalized).replaceAll("");
         return slug.toLowerCase(Locale.ENGLISH);
+    }
+
+    private String resolveCurrencySymbol(String currencySymbol) {
+        if (currencySymbol == null || currencySymbol.isBlank()) {
+            return "AED";
+        }
+        return currencySymbol.trim();
     }
 }

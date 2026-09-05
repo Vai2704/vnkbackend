@@ -103,13 +103,13 @@ public class CartService {
                 .orElse(null);
 
         if (cart == null) {
-            return new CartResponseDto(null, List.of(), 0, BigDecimal.ZERO);
+            return new CartResponseDto(null, List.of(), 0, BigDecimal.ZERO, null);
         }
 
         List<CartItem> cartItems = cartItemRepository.findByCartIdActive(cart.getId());
 
         if (cartItems.isEmpty()) {
-            return new CartResponseDto(cart.getId(), List.of(), 0, BigDecimal.ZERO);
+            return new CartResponseDto(cart.getId(), List.of(), 0, BigDecimal.ZERO, null);
         }
 
         // Fetch all products in one query
@@ -131,7 +131,8 @@ public class CartService {
                 .map(CartItemResponseDto::totalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return new CartResponseDto(cart.getId(), items, totalItems, totalAmount);
+        return new CartResponseDto(cart.getId(), items, totalItems, totalAmount,
+                items.isEmpty() ? null : items.get(0).currencySymbol());
     }
 
     @Transactional(readOnly = true)
@@ -169,6 +170,7 @@ public class CartService {
                 product != null ? product.getSlug() : null,
                 product != null ? product.getPackSize() : null,
                 item.getUnitPrice(),
+                product != null ? product.getCurrencySymbol() : null,
                 item.getQuantity(),
                 totalPrice,
                 thumbnail

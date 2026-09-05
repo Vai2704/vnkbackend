@@ -8,5 +8,6 @@ public record CartResponseDto(
         UUID cartId,
         List<CartItemResponseDto> items,
         Integer totalItems,
-        BigDecimal totalAmount
+        BigDecimal totalAmount,
+        String currencySymbol
 ) {}

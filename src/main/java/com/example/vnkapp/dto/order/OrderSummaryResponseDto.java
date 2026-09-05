@@ -12,6 +12,7 @@ public record OrderSummaryResponseDto(
         String orderNumber,
         OrderStatus orderStatus,
         BigDecimal totalAmount,
+        String currencySymbol,
         Integer itemCount,
         String thumbnailImage,
         Instant createdAt
@@ -26,9 +27,17 @@ public record OrderSummaryResponseDto(
                 order.getOrderNumber(),
                 order.getOrderStatus(),
                 order.getTotalAmount(),
+                resolveCurrencySymbol(order.getCurrencySymbol()),
                 itemCount,
                 thumbnailImage,
                 order.getCreatedAt()
         );
+    }
+
+    private static String resolveCurrencySymbol(String currencySymbol) {
+        if (currencySymbol == null || currencySymbol.isBlank()) {
+            return "AED";
+        }
+        return currencySymbol;
     }
 }

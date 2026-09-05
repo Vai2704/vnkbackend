@@ -14,6 +14,7 @@ public record OrderItemResponseDto(
         String thumbnailImage,
         Integer quantity,
         BigDecimal unitPrice,
+        String currencySymbol,
         BigDecimal totalPrice
 ) {
     public static OrderItemResponseDto fromEntity(OrderItem item) {
@@ -33,7 +34,15 @@ public record OrderItemResponseDto(
                 thumbnail,
                 item.getQuantity(),
                 item.getUnitPrice(),
+                resolveCurrencySymbol(item.getCurrencySymbol()),
                 item.getTotalPrice()
         );
+    }
+
+    private static String resolveCurrencySymbol(String currencySymbol) {
+        if (currencySymbol == null || currencySymbol.isBlank()) {
+            return "AED";
+        }
+        return currencySymbol;
     }
 }

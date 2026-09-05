@@ -118,6 +118,11 @@ public class PaymentService {
      */
     @Transactional
     public Payment retryNgeniusPayment(Order order) {
+        return retryNgeniusPayment(order, null);
+    }
+
+    @Transactional
+    public Payment retryNgeniusPayment(Order order, User user) {
         paymentRepository.findByOrderIdActive(order.getId()).ifPresent(existing -> {
             if (existing.getPaymentStatus() == PaymentStatus.COMPLETED) {
                 throw new IllegalArgumentException("Order is already paid");
@@ -125,7 +130,7 @@ public class PaymentService {
             existing.setStatus(com.example.vnkapp.entity.BaseEntity.STATUS_INACTIVE);
             paymentRepository.save(existing);
         });
-        return initiateNgeniusPayment(order);
+        return initiateNgeniusPayment(order, user);
     }
 
     @Transactional
@@ -174,8 +179,8 @@ public class PaymentService {
     public boolean isValidWebhookRequest(HttpServletRequest request) {
         String expected = properties.getWebhookHeaderValue();
         if (expected == null || expected.isBlank()) {
-            log.warn("ngenius.webhook-header-value is not configured - accepting webhook without secret validation");
-            return true;
+            log.warn("ngenius.webhook-header-value is not configured - rejecting webhook");
+            return false;
         }
         return expected.equals(request.getHeader(properties.getWebhookHeaderName()));
     }
