@@ -28,6 +28,8 @@ public class SchemaMigrationRunner implements ApplicationRunner {
         log.info("Running schema migrations...");
         alterUserMedicationsNullable();
         updatePaymentsPaymentMethodConstraint();
+        addProductCurrencySymbol();
+        addOrderCurrencySymbol();
         log.info("Schema migrations completed.");
     }
 
@@ -52,5 +54,43 @@ public class SchemaMigrationRunner implements ApplicationRunner {
                 ))
                 """);
         log.debug("payments: payment_method check constraint updated to include NGENIUS");
+    }
+
+    private void addProductCurrencySymbol() {
+        jdbcTemplate.execute("""
+                ALTER TABLE products
+                ADD COLUMN IF NOT EXISTS currency_symbol VARCHAR(16)
+                """);
+        jdbcTemplate.execute("""
+                UPDATE products
+                SET currency_symbol = 'AED'
+                WHERE currency_symbol IS NULL OR btrim(currency_symbol) = ''
+                """);
+        jdbcTemplate.execute("""
+                ALTER TABLE products
+                ALTER COLUMN currency_symbol SET DEFAULT 'AED'
+                """);
+        jdbcTemplate.execute("""
+                ALTER TABLE products
+                ALTER COLUMN currency_symbol SET NOT NULL
+                """);
+        log.debug("products: currency_symbol column added with default AED");
+    }
+
+    private void addOrderCurrencySymbol() {
+        addCurrencySymbolColumn("orders");
+        addCurrencySymbolColumn("order_items");
+        log.debug("orders and order_items: currency_symbol column added with default AED");
+    }
+
+    private void addCurrencySymbolColumn(String table) {
+        jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN IF NOT EXISTS currency_symbol VARCHAR(16)");
+        jdbcTemplate.execute("""
+                UPDATE %s
+                SET currency_symbol = 'AED'
+                WHERE currency_symbol IS NULL OR btrim(currency_symbol) = ''
+                """.formatted(table));
+        jdbcTemplate.execute("ALTER TABLE " + table + " ALTER COLUMN currency_symbol SET DEFAULT 'AED'");
+        jdbcTemplate.execute("ALTER TABLE " + table + " ALTER COLUMN currency_symbol SET NOT NULL");
     }
 }

@@ -182,7 +182,12 @@ public class PaymentService {
             log.warn("ngenius.webhook-header-value is not configured - rejecting webhook");
             return false;
         }
-        return expected.equals(request.getHeader(properties.getWebhookHeaderName()));
+        String headerName = properties.getWebhookHeaderName();
+        if (headerName == null || headerName.isBlank()) {
+            headerName = "X-Webhook-Secret";
+        }
+        String actual = request.getHeader(headerName);
+        return expected.equals(actual);
     }
 
     /**
@@ -252,6 +257,30 @@ public class PaymentService {
     }
 
     @Transactional
+    public void handleNgeniusWebhookRaw(String rawBody) {
+        if (rawBody == null || rawBody.isBlank()) {
+            log.warn("N-Genius webhook body was empty");
+            return;
+        }
+
+        NgeniusWebhookPayload payload;
+        try {
+            payload = gatewayObjectMapper.readValue(rawBody, NgeniusWebhookPayload.class);
+        } catch (Exception ex) {
+            log.error("Failed to parse N-Genius webhook JSON: {}", rawBody, ex);
+            return;
+        }
+
+        log.info("Parsed N-Genius webhook: eventId={}, eventName={}, outletId={}, orderRef={}, paymentState={}",
+                payload.eventId(),
+                payload.eventName(),
+                payload.outletId(),
+                payload.order() != null ? payload.order().reference() : null,
+                payload.firstPaymentState());
+        handleNgeniusWebhook(payload);
+    }
+
+    @Transactional
     public void handleNgeniusWebhook(NgeniusWebhookPayload payload) {
         if (payload.order() == null) {
             log.warn("N-Genius webhook missing order, eventId={}", payload.eventId());
@@ -289,6 +318,12 @@ public class PaymentService {
 
     private void applyPaymentStatus(Order order, Payment payment, PaymentStatus newStatus,
                                     String gatewayResponse, String reason) {
+        if (!shouldApplyPaymentStatus(payment.getPaymentStatus(), newStatus)) {
+            log.info("Ignoring N-Genius status {} for order {} because payment is already {}",
+                    newStatus, order.getOrderNumber(), payment.getPaymentStatus());
+            return;
+        }
+
         payment.setPaymentStatus(newStatus);
         if (gatewayResponse != null) {
             payment.setGatewayResponse(gatewayResponse);
@@ -316,6 +351,19 @@ public class PaymentService {
         if (newStatus == PaymentStatus.COMPLETED) {
             referralService.completeReferralOnFirstPaidOrder(order.getUserId(), order.getId());
         }
+    }
+
+    /**
+     * SALE mode sends AUTHORISED then CAPTURED. Never let AUTHORISED overwrite a completed capture.
+     */
+    private boolean shouldApplyPaymentStatus(PaymentStatus current, PaymentStatus incoming) {
+        if (current == null || incoming == null || current == incoming) {
+            return incoming != null;
+        }
+        if (current == PaymentStatus.COMPLETED) {
+            return incoming == PaymentStatus.REFUNDED || incoming == PaymentStatus.PARTIALLY_REFUNDED;
+        }
+        return current != PaymentStatus.REFUNDED;
     }
 
     private Order resolveOrderFromRedirectRef(String ref) {

@@ -29,51 +29,65 @@ public class EmailService {
 
     @Async
     public void sendWelcomeEmail(String toEmail, String username, String memberId) {
-        log.info("Sending welcome email to: {}", toEmail);
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(toEmail);
-        message.setSubject("Welcome to " + appName + "!");
-        message.setText(buildWelcomeEmailBody(username, memberId));
-        mailSender.send(message);
-        log.debug("Welcome email sent to: {}", toEmail);
+        sendEmail(
+                toEmail,
+                "welcome",
+                "Welcome to " + appName + "!",
+                buildWelcomeEmailBody(username, memberId)
+        );
     }
 
     @Async
     public void sendPasswordResetCode(String toEmail, String code) {
-        log.info("Sending password reset code to: {}", toEmail);
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(toEmail);
-        message.setSubject(appName + " - Password Reset Code");
-        message.setText(buildPasswordResetEmailBody(code));
-        mailSender.send(message);
-        log.debug("Password reset code email sent to: {}", toEmail);
+        sendEmail(
+                toEmail,
+                "password-reset-code",
+                appName + " - Password Reset Code",
+                buildPasswordResetEmailBody(code)
+        );
     }
 
     @Async
     public void sendPasswordResetSuccess(String toEmail, String username) {
-        log.info("Sending password reset success email to: {}", toEmail);
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(toEmail);
-        message.setSubject(appName + " - Password Changed Successfully");
-        message.setText(buildPasswordResetSuccessBody(username));
-        mailSender.send(message);
-        log.debug("Password reset success email sent to: {}", toEmail);
+        sendEmail(
+                toEmail,
+                "password-reset-success",
+                appName + " - Password Changed Successfully",
+                buildPasswordResetSuccessBody(username)
+        );
     }
 
     @Async
     public void sendOrderConfirmation(String toEmail, String username, String orderNumber,
-                                       String totalAmount, String shippingAddress) {
-        log.info("Sending order confirmation {} to: {}", orderNumber, toEmail);
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom(fromEmail);
-        message.setTo(toEmail);
-        message.setSubject(appName + " - Order Confirmation #" + orderNumber);
-        message.setText(buildOrderConfirmationBody(username, orderNumber, totalAmount, shippingAddress));
-        mailSender.send(message);
-        log.debug("Order confirmation email sent for order: {} to: {}", orderNumber, toEmail);
+                                      String totalAmount, String shippingAddress) {
+        sendOrderConfirmation(toEmail, username, orderNumber, totalAmount, shippingAddress, null);
+    }
+
+    @Async
+    public void sendOrderConfirmation(String toEmail, String username, String orderNumber,
+                                      String totalAmount, String shippingAddress, String paymentUrl) {
+        sendEmail(
+                toEmail,
+                "order-confirmation-" + orderNumber,
+                appName + " - Order Confirmation #" + orderNumber,
+                buildOrderConfirmationBody(username, orderNumber, totalAmount, shippingAddress, paymentUrl)
+        );
+    }
+
+    private void sendEmail(String toEmail, String emailType, String subject, String body) {
+        log.info("Attempting to send {} email to: {} (from: {})", emailType, toEmail, fromEmail);
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject(subject);
+            message.setText(body);
+            mailSender.send(message);
+            log.info("Successfully sent {} email to: {}", emailType, toEmail);
+        } catch (Exception ex) {
+            log.error("Failed to send {} email to: {} (from: {}): {}",
+                    emailType, toEmail, fromEmail, ex.getMessage(), ex);
+        }
     }
 
     private String buildWelcomeEmailBody(String username, String memberId) {
@@ -131,7 +145,16 @@ public class EmailService {
     }
 
     private String buildOrderConfirmationBody(String username, String orderNumber,
-                                               String totalAmount, String shippingAddress) {
+                                              String totalAmount, String shippingAddress,
+                                              String paymentUrl) {
+        String paymentSection = (paymentUrl != null && !paymentUrl.isBlank())
+                ? """
+
+            Your order is pending payment. Complete payment using this link:
+            %s
+            """.formatted(paymentUrl)
+                : "";
+
         return String.format("""
             Hi %s,
 
@@ -139,7 +162,7 @@ public class EmailService {
 
             Order Number: %s
             Total Amount: %s
-
+            %s
             Shipping Address:
             %s
 
@@ -149,6 +172,6 @@ public class EmailService {
 
             Best regards,
             The %s Team
-            """, username, orderNumber, totalAmount, shippingAddress, appName);
+            """, username, orderNumber, totalAmount, paymentSection, shippingAddress, appName);
     }
 }

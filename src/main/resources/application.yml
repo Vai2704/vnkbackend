@@ -43,4 +43,5 @@ ngenius:
   cancel-url: ${NGENIUS_CANCEL_URL:https://d1dfsxng7uvrcx.cloudfront.net/payment-success.html}
   payment-attempts: 3
   webhook-header-name: ${NGENIUS_WEBHOOK_HEADER_NAME:X-Webhook-Secret}
-  webhook-header-value: ${NGENIUS_WEBHOOK_HEADER_VALUE:}
+  # Paste this same value as Custom Header Value in the N-Genius portal webhook.
+  webhook-header-value: ${NGENIUS_WEBHOOK_HEADER_VALUE:7Wp5@4VoukB_RZ+GUJPxn-Ai3OQMdqyN}
