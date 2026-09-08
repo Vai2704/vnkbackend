@@ -1,6 +1,7 @@
 package com.example.vnkapp.dto.payment.ngenius;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Request body for POST /transactions/outlets/{outletRef}/orders.
@@ -28,8 +29,8 @@ public record NgeniusOrderRequest(
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record BillingAddress(
-            String firstName,
-            String lastName,
+            @JsonProperty("firstName") String firstName,
+            @JsonProperty("lastName") String lastName,
             String city,
             String state,
             String country,

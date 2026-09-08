@@ -2,19 +2,22 @@ package com.example.vnkapp.controller;
 
 import com.example.vnkapp.dto.common.ApiResponseDto;
 import com.example.vnkapp.dto.payment.PaymentCallbackResponseDto;
-import com.example.vnkapp.dto.payment.ngenius.NgeniusWebhookPayload;
 import com.example.vnkapp.service.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 
 /**
  * N-Genius payment webhook endpoint.
@@ -60,28 +63,28 @@ public class PaymentController {
 
     /**
      * N-Genius sends one POST per event with no retries. Respond 200/201 within 15 seconds.
+     * Body is read as raw bytes so vendor Content-Types (not only application/json) still work.
      */
-    @PostMapping("/webhooks/ngenius")
-    public ResponseEntity<Void> handleNgeniusWebhook(
-            HttpServletRequest request,
-            @RequestBody NgeniusWebhookPayload payload) {
-        log.info("Received N-Genius webhook: eventId={}, eventName={}, outletId={}, orderRef={}, paymentState={}",
-                payload.eventId(),
-                payload.eventName(),
-                payload.outletId(),
-                payload.order() != null ? payload.order().reference() : null,
-                payload.firstPaymentState());
+    @PostMapping(value = "/webhooks/ngenius", consumes = MediaType.ALL_VALUE)
+    public ResponseEntity<Void> handleNgeniusWebhook(HttpServletRequest request) throws IOException {
+        String rawBody = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        log.info("N-Genius webhook POST received: contentType={}, bodyLength={}, headerNames={}, secretHeaderPresent={}",
+                request.getContentType(),
+                rawBody.length(),
+                Collections.list(request.getHeaderNames()),
+                paymentService.isValidWebhookRequest(request));
 
         if (!paymentService.isValidWebhookRequest(request)) {
-            log.warn("Rejected N-Genius webhook eventId={} - invalid/missing secret header", payload.eventId());
+            log.warn("Rejected N-Genius webhook - missing/invalid {} header. Body preview: {}",
+                    "X-Webhook-Secret",
+                    rawBody.length() > 500 ? rawBody.substring(0, 500) : rawBody);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         try {
-            paymentService.handleNgeniusWebhook(payload);
+            paymentService.handleNgeniusWebhookRaw(rawBody);
         } catch (Exception ex) {
-            // Acknowledge anyway — N-Genius does not retry lost events.
-            log.error("Error processing N-Genius webhook eventId={}", payload.eventId(), ex);
+            log.error("Error processing N-Genius webhook body={}", rawBody, ex);
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).build();

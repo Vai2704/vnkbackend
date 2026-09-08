@@ -1,5 +1,6 @@
 package com.example.vnkapp.dto.payment.ngenius;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -13,6 +14,7 @@ import java.util.List;
 public record NgeniusWebhookPayload(
         String outletId,
         String eventId,
+        @JsonAlias("event")
         String eventName,
         Order order
 ) {

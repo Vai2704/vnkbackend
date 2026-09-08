@@ -31,8 +31,11 @@ public class NgeniusStartupLogger implements ApplicationRunner {
                     + "(and verify NGENIUS_OUTLET_REF). Checkout payment initiation will fail until configured.");
         }
         if (properties.getWebhookHeaderValue() == null || properties.getWebhookHeaderValue().isBlank()) {
-            log.warn("ngenius.webhook-header-value is not set — webhook endpoint will accept "
-                    + "requests without secret validation.");
+            log.warn("ngenius.webhook-header-value is not set — webhook endpoint will reject "
+                    + "requests until a secret is configured.");
+        } else {
+            log.info("N-Genius webhook secret header is configured (header={})",
+                    properties.getWebhookHeaderName());
         }
     }
 }
