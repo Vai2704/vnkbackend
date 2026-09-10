@@ -143,6 +143,8 @@ public class NgeniusPaymentService {
 
     private NgeniusOrderResponse callCreateOrder(NgeniusOrderRequest orderRequest, String accessToken) {
         String uri = properties.getApiBaseUrl() + "/transactions/outlets/" + properties.getOutletRef() + "/orders";
+        String requestJson = toJson(orderRequest);
+        log.info("N-Genius create-order request body: {}", requestJson);
         return restClient.post()
                 .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)

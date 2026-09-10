@@ -141,6 +141,18 @@ public class PaymentService {
         }
 
         NgeniusOrderRequest request = buildOrderRequest(order, user);
+        NgeniusOrderRequest.MerchantAttributes attrs = request.merchantAttributes();
+        log.info("N-Genius create-order merchantAttributes for {}: cancelUrl={}, redirectUrl={}, paymentAttempts={}",
+                order.getOrderNumber(),
+                attrs != null ? attrs.cancelUrl() : null,
+                attrs != null ? attrs.redirectUrl() : null,
+                attrs != null ? attrs.paymentAttempts() : null);
+        if (attrs == null || attrs.cancelUrl() == null || attrs.cancelUrl().isBlank()
+                || attrs.redirectUrl() == null || attrs.redirectUrl().isBlank()) {
+            log.warn("N-Genius merchantAttributes missing cancelUrl and/or redirectUrl for {}. "
+                            + "Configured properties: ngenius.cancel-url={}, ngenius.redirect-url={}",
+                    order.getOrderNumber(), properties.getCancelUrl(), properties.getRedirectUrl());
+        }
 
         NgeniusOrderResponse response;
         try {
