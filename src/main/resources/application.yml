@@ -40,7 +40,7 @@ ngenius:
   action: SALE
   currency: AED
   redirect-url: ${NGENIUS_REDIRECT_URL:https://d1dfsxng7uvrcx.cloudfront.net/payment-success.html}
-  cancel-url: ${NGENIUS_CANCEL_URL:https://d1dfsxng7uvrcx.cloudfront.net/payment-success.html}
+  cancel-url: ${NGENIUS_CANCEL_URL:https://d1dfsxng7uvrcx.cloudfront.net/payment-cancel.html}
   payment-attempts: 3
   webhook-header-name: ${NGENIUS_WEBHOOK_HEADER_NAME:X-Webhook-Secret}
   # Paste this same value as Custom Header Value in the N-Genius portal webhook.
