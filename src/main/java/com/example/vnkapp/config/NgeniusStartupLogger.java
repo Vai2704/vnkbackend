@@ -23,6 +23,12 @@ public class NgeniusStartupLogger implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        log.info("N-Genius callback URLs: redirectUrl={}, cancelUrl={}",
+                properties.getRedirectUrl(), properties.getCancelUrl());
+        if (properties.getRedirectUrl() == null || properties.getRedirectUrl().isBlank()
+                || properties.getCancelUrl() == null || properties.getCancelUrl().isBlank()) {
+            log.warn("N-Genius redirectUrl and/or cancelUrl is blank — merchantAttributes may omit them on order create.");
+        }
         if (properties.isConfigured()) {
             log.info("N-Genius payment gateway configured: outletRef={}, currency={}, apiBaseUrl={}",
                     properties.getOutletRef(), properties.getCurrency(), properties.getApiBaseUrl());

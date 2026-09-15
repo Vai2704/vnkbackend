@@ -4,6 +4,7 @@ import com.example.vnkapp.entity.Order;
 import com.example.vnkapp.entity.Payment;
 import com.example.vnkapp.enums.order.OrderStatus;
 import com.example.vnkapp.enums.payment.PaymentStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -38,8 +39,8 @@ public record OrderResponseDto(
         Instant updatedAt,
         List<OrderItemResponseDto> items,
         PaymentStatus paymentStatus,
-        String paymentUrl,
-        String paymentMessage
+        @JsonInclude(JsonInclude.Include.NON_NULL) String paymentUrl,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String paymentMessage
 ) {
     public static OrderResponseDto fromEntity(Order order, List<OrderItemResponseDto> items, Payment payment) {
         return new OrderResponseDto(
@@ -70,9 +71,16 @@ public record OrderResponseDto(
                 order.getUpdatedAt(),
                 items,
                 payment != null ? payment.getPaymentStatus() : null,
-                payment != null ? payment.getGatewayPaymentUrl() : null,
+                paymentUrlFor(order, payment),
                 paymentMessageFor(order, payment)
         );
+    }
+
+    private static String paymentUrlFor(Order order, Payment payment) {
+        if (order.getOrderStatus() != OrderStatus.PENDING || payment == null) {
+            return null;
+        }
+        return payment.getGatewayPaymentUrl();
     }
 
     private static String paymentMessageFor(Order order, Payment payment) {

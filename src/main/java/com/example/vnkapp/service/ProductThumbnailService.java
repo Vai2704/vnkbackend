@@ -3,22 +3,26 @@ package com.example.vnkapp.service;
 import com.example.vnkapp.entity.Product;
 import com.example.vnkapp.entity.ProductImage;
 import com.example.vnkapp.repository.ProductImageRepository;
+import com.example.vnkapp.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class ProductThumbnailService {
 
     private final ProductImageRepository productImageRepository;
+    private final ProductRepository productRepository;
 
-    public ProductThumbnailService(ProductImageRepository productImageRepository) {
+    public ProductThumbnailService(ProductImageRepository productImageRepository,
+                                   ProductRepository productRepository) {
         this.productImageRepository = productImageRepository;
+        this.productRepository = productRepository;
     }
 
     public Map<UUID, String> thumbnailsFor(Collection<UUID> productIds) {
@@ -26,14 +30,37 @@ public class ProductThumbnailService {
             return Collections.emptyMap();
         }
         List<UUID> ids = productIds.stream().distinct().toList();
-        return productImageRepository.findPrimaryByProductIds(ids).stream()
-                .collect(Collectors.toMap(ProductImage::getProductId, this::resolve, (a, b) -> a));
+        Map<UUID, String> thumbnails = new HashMap<>();
+        for (ProductImage image : productImageRepository.findPrimaryByProductIds(ids)) {
+            String url = resolve(image);
+            if (url != null) {
+                thumbnails.putIfAbsent(image.getProductId(), url);
+            }
+        }
+
+        List<UUID> missing = ids.stream()
+                .filter(id -> firstNonBlank(thumbnails.get(id)) == null)
+                .toList();
+        if (!missing.isEmpty()) {
+            productRepository.findAllById(missing).forEach(product -> {
+                String fromProduct = fromProduct(product);
+                if (fromProduct != null) {
+                    thumbnails.put(product.getId(), fromProduct);
+                }
+            });
+        }
+        return thumbnails;
     }
 
     public String thumbnailOrFallback(UUID productId, String fallback) {
         String thumbnail = productImageRepository.findPrimaryByProductId(productId)
                 .map(this::resolve)
                 .orElse(null);
+        if (firstNonBlank(thumbnail) == null) {
+            thumbnail = productRepository.findById(productId)
+                    .map(this::fromProduct)
+                    .orElse(null);
+        }
         return firstNonBlank(thumbnail, fallback);
     }
 
@@ -52,6 +79,9 @@ public class ProductThumbnailService {
     }
 
     private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
         for (String value : values) {
             if (value != null && !value.isBlank()) {
                 return value;
