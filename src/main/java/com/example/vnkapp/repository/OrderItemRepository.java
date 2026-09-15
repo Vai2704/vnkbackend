@@ -11,7 +11,16 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, UUID> {
 
     List<OrderItem> findByOrderIdAndStatus(UUID orderId, Integer status);
 
+    List<OrderItem> findByOrderIdInAndStatus(List<UUID> orderIds, Integer status);
+
     default List<OrderItem> findByOrderIdActive(UUID orderId) {
         return findByOrderIdAndStatus(orderId, BaseEntity.STATUS_ACTIVE);
+    }
+
+    default List<OrderItem> findByOrderIdsActive(List<UUID> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            return List.of();
+        }
+        return findByOrderIdInAndStatus(orderIds, BaseEntity.STATUS_ACTIVE);
     }
 }

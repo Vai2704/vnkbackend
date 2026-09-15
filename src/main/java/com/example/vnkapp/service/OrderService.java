@@ -218,7 +218,9 @@ public class OrderService {
         // 9. Create order items and update product stock
         for (CartItem cartItem : cartItems) {
             Product product = productMap.get(cartItem.getProductId());
-            String imageUrl = productImageMap.get(product.getId());
+            String imageUrl = firstNonBlank(
+                    productImageMap.get(product.getId()),
+                    productThumbnailService.fromProduct(product));
 
             OrderItem orderItem = OrderItem.builder()
                     .orderId(savedOrder.getId())
@@ -291,14 +293,22 @@ public class OrderService {
             orders = orderRepository.findByUserIdActivePaginated(userId, pageable);
         }
 
+        List<UUID> orderIds = orders.getContent().stream().map(Order::getId).toList();
+        List<OrderItem> allItems = orderItemRepository.findByOrderIdsActive(orderIds);
+        Map<UUID, List<OrderItem>> itemsByOrderId = allItems.stream()
+                .collect(Collectors.groupingBy(OrderItem::getOrderId));
+        Map<UUID, String> thumbnails = productThumbnailService.thumbnailsFor(
+                allItems.stream().map(OrderItem::getProductId).toList());
+
         return orders.map(order -> {
-            List<OrderItem> items = orderItemRepository.findByOrderIdActive(order.getId());
+            List<OrderItem> items = itemsByOrderId.getOrDefault(order.getId(), List.of());
             int itemCount = items.stream().mapToInt(OrderItem::getQuantity).sum();
             String thumbnailImage = null;
             if (!items.isEmpty()) {
                 OrderItem first = items.get(0);
-                thumbnailImage = productThumbnailService.thumbnailOrFallback(
-                        first.getProductId(), first.getProductImageUrl());
+                thumbnailImage = firstNonBlank(
+                        thumbnails.get(first.getProductId()),
+                        first.getProductImageUrl());
             }
             return OrderSummaryResponseDto.fromEntity(order, itemCount, thumbnailImage);
         });
