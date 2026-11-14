@@ -3,9 +3,9 @@
 # on the Fargate task (or Secrets Manager). Username is also used as the "from" address.
 spring:
   datasource:
-    url: jdbc:postgresql://vnk-staging.cdesu2c0wyfn.ap-south-1.rds.amazonaws.com:5432/vnk_staging_db
+    url: jdbc:postgresql://database-1.cpuoiaucgjy5.ap-south-1.rds.amazonaws.com:5432/postgres
     username: postgres
-    password: vnkstaging25
+    password: vnkdb2026
   jpa:
     show-sql: false
   mail:

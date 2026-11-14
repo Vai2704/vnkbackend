@@ -1,6 +1,7 @@
 package com.example.vnkapp.controller;
 
 import com.example.vnkapp.dto.common.ApiResponseDto;
+import com.example.vnkapp.dto.profile.DeleteAccountRequestDto;
 import com.example.vnkapp.dto.user.ForgotPasswordRequestDto;
 import com.example.vnkapp.dto.user.LoginResponseDto;
 import com.example.vnkapp.dto.user.RegisterResponseDto;
@@ -8,6 +9,7 @@ import com.example.vnkapp.dto.user.ResetPasswordRequestDto;
 import com.example.vnkapp.dto.user.UserLoginRequestDto;
 import com.example.vnkapp.dto.user.UserRegisterRequestDto;
 import com.example.vnkapp.dto.user.UserResponseDto;
+import com.example.vnkapp.service.AccountDeletionService;
 import com.example.vnkapp.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -29,9 +31,11 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final UserService userService;
+    private final AccountDeletionService accountDeletionService;
 
-    public AuthController(UserService userService) {
+    public AuthController(UserService userService, AccountDeletionService accountDeletionService) {
         this.userService = userService;
+        this.accountDeletionService = accountDeletionService;
     }
 
     @PostMapping("/register")
@@ -53,6 +57,26 @@ public class AuthController {
             log.error("Register error for email: {}", request.email(), ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new UserResponseDto(null, "Can't create user due to some issue."));
+        }
+    }
+
+    /**
+     * Public endpoint (no Bearer token) used by the website's "delete my account" page.
+     * Ownership is proven with email + password.
+     */
+    @PostMapping("/delete-account")
+    public ResponseEntity<?> deleteAccount(@Valid @RequestBody DeleteAccountRequestDto request) {
+        log.info("Delete account request received");
+        try {
+            accountDeletionService.deleteAccount(request.email(), request.password());
+            return ResponseEntity.ok(new ApiResponseDto<>("Account deleted successfully", null, null));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new UserResponseDto(null, ex.getMessage()));
+        } catch (Exception ex) {
+            log.error("Delete account error", ex);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new UserResponseDto(null, "Can't delete account due to some issue."));
         }
     }
 

@@ -17,9 +17,11 @@ public class ProfileService {
     private static final Logger log = LoggerFactory.getLogger(ProfileService.class);
 
     private final UserRepository userRepository;
+    private final ReferralService referralService;
 
-    public ProfileService(UserRepository userRepository) {
+    public ProfileService(UserRepository userRepository, ReferralService referralService) {
         this.userRepository = userRepository;
+        this.referralService = referralService;
     }
 
     @Transactional(readOnly = true)
@@ -31,7 +33,7 @@ public class ProfileService {
                     return new IllegalArgumentException("User not found");
                 });
 
-        return ProfileResponseDto.fromEntity(user);
+        return ProfileResponseDto.fromEntity(user, referralService.getMemberId(userId));
     }
 
     @Transactional
@@ -57,6 +59,6 @@ public class ProfileService {
 
         User updatedUser = userRepository.save(user);
         log.info("Profile updated for user: {}", userId);
-        return ProfileResponseDto.fromEntity(updatedUser);
+        return ProfileResponseDto.fromEntity(updatedUser, referralService.getMemberId(userId));
     }
 }
