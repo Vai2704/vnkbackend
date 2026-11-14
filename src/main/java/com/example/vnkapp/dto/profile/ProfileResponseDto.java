@@ -15,10 +15,11 @@ public record ProfileResponseDto(
         Boolean isEmailVerified,
         Boolean isPhoneVerified,
         UserRole role,
+        String memberId,
         Instant createdAt,
         Instant updatedAt
 ) {
-    public static ProfileResponseDto fromEntity(User user) {
+    public static ProfileResponseDto fromEntity(User user, String memberId) {
         return new ProfileResponseDto(
                 user.getId(),
                 user.getUsername(),
@@ -28,6 +29,7 @@ public record ProfileResponseDto(
                 user.getIsEmailVerified(),
                 user.getIsPhoneVerified(),
                 user.getRole(),
+                memberId,
                 user.getCreatedAt(),
                 user.getUpdatedAt()
         );
