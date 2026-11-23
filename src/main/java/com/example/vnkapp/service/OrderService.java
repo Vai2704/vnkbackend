@@ -398,6 +398,12 @@ public class OrderService {
         orderRepository.save(order);
         log.info("Order {} cancelled, reason: {}", orderId, dto.reason());
 
+        userRepository.findById(userId).ifPresent(cancelUser ->
+                emailService.ifPresent(service -> service.sendOrderStatusUpdate(
+                        cancelUser.getEmail(), cancelUser.getUsername(), order.getOrderNumber(),
+                        OrderStatus.CANCELLED.name(),
+                        dto.reason() != null && !dto.reason().isBlank() ? "Reason: " + dto.reason() : null)));
+
         // Restore product stock
         List<OrderItem> orderItems = orderItemRepository.findByOrderIdActive(order.getId());
         for (OrderItem orderItem : orderItems) {

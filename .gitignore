@@ -32,3 +32,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+#Enviromnet variables
+.env
+.env.example
+
+#Serverless meta.json file
+.serverless/meta.json

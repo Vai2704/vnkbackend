@@ -4,27 +4,44 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.sesv2.SesV2Client;
+import software.amazon.awssdk.services.sesv2.model.Body;
+import software.amazon.awssdk.services.sesv2.model.Content;
+import software.amazon.awssdk.services.sesv2.model.Destination;
+import software.amazon.awssdk.services.sesv2.model.EmailContent;
+import software.amazon.awssdk.services.sesv2.model.Message;
+import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
 
+/**
+ * Sends transactional emails through Amazon SES (SESv2 API).
+ * Authentication uses the ECS task role, so no credentials live in config.
+ * Enabled only when {@code app.ses.enabled=true}; otherwise callers get no EmailService
+ * (they hold an {@code Optional<EmailService>}) and emails are silently skipped.
+ */
 @Service
-@ConditionalOnProperty(name = "spring.mail.host")
+@ConditionalOnProperty(name = "app.ses.enabled", havingValue = "true")
 public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
-    private final JavaMailSender mailSender;
+    private final SesV2Client sesClient;
 
-    @Value("${spring.mail.username}")
+    @Value("${app.ses.from-email}")
     private String fromEmail;
+
+    @Value("${app.ses.from-name:VNK Supplements}")
+    private String fromName;
+
+    @Value("${app.ses.configuration-set:}")
+    private String configurationSet;
 
     @Value("${app.name:VNK App}")
     private String appName;
 
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
+    public EmailService(SesV2Client sesClient) {
+        this.sesClient = sesClient;
     }
 
     @Async
@@ -74,20 +91,80 @@ public class EmailService {
         );
     }
 
+    /**
+     * Sends an order status update (e.g. CONFIRMED, SHIPPED, DELIVERED, CANCELLED, REFUNDED).
+     *
+     * @param status      raw status name; shown to the customer in a friendly form
+     * @param extraDetail optional extra line, e.g. tracking info or cancellation reason (may be null)
+     */
+    @Async
+    public void sendOrderStatusUpdate(String toEmail, String username, String orderNumber,
+                                      String status, String extraDetail) {
+        String friendly = friendlyStatus(status);
+        sendEmail(
+                toEmail,
+                "order-status-" + status + "-" + orderNumber,
+                appName + " - Order #" + orderNumber + " " + friendly,
+                buildOrderStatusBody(username, orderNumber, friendly, extraDetail)
+        );
+    }
+
     private void sendEmail(String toEmail, String emailType, String subject, String body) {
-        log.info("Attempting to send {} email to: {} (from: {})", emailType, toEmail, fromEmail);
+        log.info("Attempting to send {} email to: {}", emailType, toEmail);
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(toEmail);
-            message.setSubject(subject);
-            message.setText(body);
-            mailSender.send(message);
-            log.info("Successfully sent {} email to: {}", emailType, toEmail);
+            SendEmailRequest.Builder request = SendEmailRequest.builder()
+                    .fromEmailAddress(fromName + " <" + fromEmail + ">")
+                    .destination(Destination.builder().toAddresses(toEmail).build())
+                    .content(EmailContent.builder()
+                            .simple(Message.builder()
+                                    .subject(Content.builder().data(subject).charset("UTF-8").build())
+                                    .body(Body.builder()
+                                            .text(Content.builder().data(body).charset("UTF-8").build())
+                                            .build())
+                                    .build())
+                            .build());
+            if (configurationSet != null && !configurationSet.isBlank()) {
+                request.configurationSetName(configurationSet);
+            }
+            String messageId = sesClient.sendEmail(request.build()).messageId();
+            log.info("Sent {} email to: {} (SES messageId: {})", emailType, toEmail, messageId);
         } catch (Exception ex) {
-            log.error("Failed to send {} email to: {} (from: {}): {}",
-                    emailType, toEmail, fromEmail, ex.getMessage(), ex);
+            // Email must never break the business flow (sign-up, order placement).
+            log.error("Failed to send {} email to: {}: {}", emailType, toEmail, ex.getMessage(), ex);
         }
+    }
+
+    private String friendlyStatus(String status) {
+        return switch (status == null ? "" : status) {
+            case "CONFIRMED" -> "Confirmed";
+            case "PROCESSING" -> "is Being Processed";
+            case "SHIPPED" -> "Has Been Shipped";
+            case "OUT_FOR_DELIVERY" -> "is Out for Delivery";
+            case "DELIVERED" -> "Has Been Delivered";
+            case "CANCELLED" -> "Cancelled";
+            case "RETURNED" -> "Returned";
+            case "REFUNDED" -> "Refunded";
+            default -> "Updated";
+        };
+    }
+
+    private String buildOrderStatusBody(String username, String orderNumber,
+                                        String friendlyStatus, String extraDetail) {
+        String detail = (extraDetail != null && !extraDetail.isBlank()) ? "\n" + extraDetail + "\n" : "";
+        return String.format("""
+            Hi %s,
+
+            There is an update on your order #%s.
+
+            Status: %s
+            %s
+            You can view the full details of your order in the %s app.
+
+            If you have any questions, please contact our support team.
+
+            Best regards,
+            The %s Team
+            """, username, orderNumber, friendlyStatus, detail, appName, appName);
     }
 
     private String buildWelcomeEmailBody(String username, String memberId) {

@@ -6,21 +6,16 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-  mail:
-    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
-    port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:}
-    password: ${SPRING_MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
 
 app:
   name: VNK App
+  # Transactional email via Amazon SES (uses the task/IAM role, no credentials in config).
+  ses:
+    enabled: ${APP_SES_ENABLED:false}
+    region: ${APP_SES_REGION:ap-south-1}
+    from-email: ${APP_SES_FROM_EMAIL:noreply@vnksupplements.com}
+    from-name: ${APP_SES_FROM_NAME:VNK Supplements}
+    configuration-set: ${APP_SES_CONFIGURATION_SET:vnk-transactional}
   password-reset:
     expiry-minutes: 15
   referral:
