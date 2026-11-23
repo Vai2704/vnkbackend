@@ -1,6 +1,5 @@
 # AWS staging / Fargate deploy (profile: staging)
-# SMTP: set SPRING_MAIL_HOST, SPRING_MAIL_PORT, SPRING_MAIL_USERNAME, SPRING_MAIL_PASSWORD
-# on the Fargate task (or Secrets Manager). Username is also used as the "from" address.
+# Email: Amazon SES via the ECS task role (needs ses:SendEmail). See app.ses in application.yml.
 spring:
   datasource:
     url: jdbc:postgresql://database-1.cpuoiaucgjy5.ap-south-1.rds.amazonaws.com:5432/postgres
@@ -8,23 +7,11 @@ spring:
     password: vnkdb2026
   jpa:
     show-sql: false
-  mail:
-    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
-    port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:noreply@vnksupplements.com}
-    password: ${SPRING_MAIL_PASSWORD:rntiwtvmsfbofmxl}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: 10000
-          timeout: 10000
-          writetimeout: 10000
 
-# Set LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_MAIL=DEBUG on the task to troubleshoot SMTP in CloudWatch.
 logging:
   level:
     com.example.vnkapp.service.EmailService: INFO
+
+app:
+  ses:
+    enabled: true

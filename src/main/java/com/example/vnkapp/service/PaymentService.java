@@ -8,6 +8,7 @@ import com.example.vnkapp.dto.payment.ngenius.NgeniusWebhookPayload;
 import com.example.vnkapp.entity.Order;
 import com.example.vnkapp.entity.Payment;
 import com.example.vnkapp.entity.User;
+import com.example.vnkapp.repository.UserRepository;
 import com.example.vnkapp.enums.order.OrderStatus;
 import com.example.vnkapp.enums.payment.PaymentMethod;
 import com.example.vnkapp.enums.payment.PaymentStatus;
@@ -87,18 +88,24 @@ public class PaymentService {
     private final NgeniusPaymentService ngeniusPaymentService;
     private final NgeniusProperties properties;
     private final ReferralService referralService;
+    private final UserRepository userRepository;
+    private final Optional<EmailService> emailService;
     private final ObjectMapper gatewayObjectMapper = new ObjectMapper();
 
     public PaymentService(PaymentRepository paymentRepository,
                            OrderRepository orderRepository,
                            NgeniusPaymentService ngeniusPaymentService,
                            NgeniusProperties properties,
-                           ReferralService referralService) {
+                           ReferralService referralService,
+                           UserRepository userRepository,
+                           Optional<EmailService> emailService) {
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.ngeniusPaymentService = ngeniusPaymentService;
         this.properties = properties;
         this.referralService = referralService;
+        this.userRepository = userRepository;
+        this.emailService = emailService;
     }
 
     /**
@@ -341,6 +348,7 @@ public class PaymentService {
             payment.setGatewayResponse(gatewayResponse);
         }
 
+        OrderStatus previousOrderStatus = order.getOrderStatus();
         switch (newStatus) {
             case COMPLETED -> {
                 if (payment.getPaidAt() == null) {
@@ -363,6 +371,19 @@ public class PaymentService {
         if (newStatus == PaymentStatus.COMPLETED) {
             referralService.completeReferralOnFirstPaidOrder(order.getUserId(), order.getId());
         }
+
+        // Notify the customer only when the order status really changed (webhooks can repeat).
+        if (order.getOrderStatus() != previousOrderStatus
+                && (order.getOrderStatus() == OrderStatus.CONFIRMED
+                || order.getOrderStatus() == OrderStatus.REFUNDED)) {
+            notifyOrderStatus(order, null);
+        }
+    }
+
+    private void notifyOrderStatus(Order order, String extraDetail) {
+        emailService.ifPresent(service -> userRepository.findById(order.getUserId()).ifPresent(user ->
+                service.sendOrderStatusUpdate(user.getEmail(), user.getUsername(),
+                        order.getOrderNumber(), order.getOrderStatus().name(), extraDetail)));
     }
 
     /**
