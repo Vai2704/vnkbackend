@@ -15,6 +15,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "coupons", indexes = {
@@ -62,6 +63,10 @@ public class Coupon extends BaseEntity {
 
     @Column(name = "valid_until", nullable = false)
     private Instant validUntil;
+
+    /** When set, only this user can redeem the coupon (referral rewards). */
+    @Column(name = "assigned_user_id")
+    private UUID assignedUserId;
 
     public boolean isValid() {
         Instant now = Instant.now();

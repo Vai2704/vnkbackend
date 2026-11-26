@@ -2,6 +2,7 @@ package com.example.vnkapp.service;
 
 import com.example.vnkapp.dto.user.ForgotPasswordRequestDto;
 import com.example.vnkapp.dto.user.LoginResponseDto;
+import com.example.vnkapp.dto.user.RegisterResponseDto;
 import com.example.vnkapp.dto.user.ResetPasswordRequestDto;
 import com.example.vnkapp.dto.user.UserLoginRequestDto;
 import com.example.vnkapp.dto.user.UserRegisterRequestDto;
@@ -41,6 +42,7 @@ public class UserService {
     private final UserSessionRepository userSessionRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final ReferralCodeRepository referralCodeRepository;
+    private final ReferralService referralService;
     private final PasswordEncoder passwordEncoder;
     private final Optional<EmailService> emailService;
     private final SecureRandom secureRandom = new SecureRandom();
@@ -52,18 +54,20 @@ public class UserService {
                        UserSessionRepository userSessionRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
                        ReferralCodeRepository referralCodeRepository,
+                       ReferralService referralService,
                        PasswordEncoder passwordEncoder,
                        Optional<EmailService> emailService) {
         this.userRepository = userRepository;
         this.userSessionRepository = userSessionRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.referralCodeRepository = referralCodeRepository;
+        this.referralService = referralService;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
     }
 
     @Transactional
-    public LoginResponseDto register(UserRegisterRequestDto registerRequestDto) {
+    public RegisterResponseDto register(UserRegisterRequestDto registerRequestDto) {
         log.debug("Registering user: {}", registerRequestDto.email());
         if (userRepository.existsByEmail(registerRequestDto.email())) {
             log.warn("Registration failed - email already in use: {}", registerRequestDto.email());
@@ -87,6 +91,9 @@ public class UserService {
         referralCodeRepository.save(referralCode);
         log.info("Member ID {} generated for user: {}", memberId, savedUser.getId());
 
+        String welcomeCouponCode = referralService.processReferralSignup(
+                savedUser.getId(), registerRequestDto.memberId());
+
         // Send welcome email asynchronously (if email service is configured)
         emailService.ifPresent(service -> service.sendWelcomeEmail(savedUser.getEmail(), savedUser.getUsername(), memberId));
 
@@ -102,7 +109,7 @@ public class UserService {
 
         userSessionRepository.save(session);
 
-        return new LoginResponseDto(sessionToken, expiresAt);
+        return new RegisterResponseDto(sessionToken, expiresAt, memberId, welcomeCouponCode);
     }
 
     @Transactional

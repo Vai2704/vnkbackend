@@ -10,5 +10,7 @@ public interface ReferralCodeRepository extends JpaRepository<ReferralCode, UUID
 
     Optional<ReferralCode> findByUserId(UUID userId);
 
+    Optional<ReferralCode> findByCode(String code);
+
     boolean existsByCode(String code);
 }
