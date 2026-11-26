@@ -74,20 +74,14 @@ public class EmailService {
         );
     }
 
+    /** Sent once payment succeeds and the order moves to CONFIRMED. */
     @Async
-    public void sendOrderConfirmation(String toEmail, String username, String orderNumber,
-                                      String totalAmount, String shippingAddress) {
-        sendOrderConfirmation(toEmail, username, orderNumber, totalAmount, shippingAddress, null);
-    }
-
-    @Async
-    public void sendOrderConfirmation(String toEmail, String username, String orderNumber,
-                                      String totalAmount, String shippingAddress, String paymentUrl) {
+    public void sendOrderConfirmation(String toEmail, String username, String orderNumber) {
         sendEmail(
                 toEmail,
                 "order-confirmation-" + orderNumber,
-                appName + " - Order Confirmation #" + orderNumber,
-                buildOrderConfirmationBody(username, orderNumber, totalAmount, shippingAddress, paymentUrl)
+                "Thank you for your order, " + firstName(username) + " 💚",
+                buildOrderConfirmationBody(username, orderNumber)
         );
     }
 
@@ -221,34 +215,31 @@ public class EmailService {
             """, username, appName);
     }
 
-    private String buildOrderConfirmationBody(String username, String orderNumber,
-                                              String totalAmount, String shippingAddress,
-                                              String paymentUrl) {
-        String paymentSection = (paymentUrl != null && !paymentUrl.isBlank())
-                ? """
-
-            Your order is pending payment. Complete payment using this link:
-            %s
-            """.formatted(paymentUrl)
-                : "";
-
+    private String buildOrderConfirmationBody(String username, String orderNumber) {
         return String.format("""
             Hi %s,
 
-            Thank you for your order! We're pleased to confirm that we've received your order.
+            Thank you for choosing VNK Supplements! Your order #%s is confirmed and our team is already getting it ready.
 
-            Order Number: %s
-            Total Amount: %s
-            %s
-            Shipping Address:
-            %s
+            We're a small, passionate team, and every order means a lot to us. We hope your new supplements become an easy, enjoyable part of your daily routine.
 
-            We'll send you another email once your order has been shipped.
+            What happens next
+            * You'll get a shipping update as soon as your order is on its way
+            * UAE customers: delivery is free across the UAE, with no minimum order 🚚
+            * Questions? WhatsApp us on +971 54 567 2277 or reply to this email
 
-            If you have any questions about your order, please don't hesitate to contact us.
+            Follow us on Instagram @vnk_supplements and TikTok @verynaturallyknown for tips, new launches and offers.
 
-            Best regards,
-            The %s Team
-            """, username, orderNumber, totalAmount, paymentSection, shippingAddress, appName);
+            With gratitude,
+            The VNK Supplements Team
+            vnksupplements.com
+            """, firstName(username), orderNumber);
+    }
+
+    private String firstName(String username) {
+        if (username == null || username.isBlank()) {
+            return "there";
+        }
+        return username.trim().split("\\s+")[0];
     }
 }
