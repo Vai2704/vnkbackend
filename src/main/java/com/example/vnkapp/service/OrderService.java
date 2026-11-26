@@ -256,25 +256,7 @@ public class OrderService {
         // is worse than not creating it in the first place.
         Payment payment = paymentService.initiateNgeniusPayment(savedOrder, user);
 
-        // 12. Send order confirmation email with the hosted payment link
-        if (user != null) {
-            String shippingAddressFormatted = String.format("%s\n%s\n%s, %s %s\n%s",
-                    savedOrder.getShippingFullName(),
-                    savedOrder.getShippingAddress(),
-                    savedOrder.getShippingCity(),
-                    savedOrder.getShippingState(),
-                    savedOrder.getShippingPostalCode(),
-                    savedOrder.getShippingCountry());
-
-            emailService.ifPresent(service -> service.sendOrderConfirmation(
-                    user.getEmail(),
-                    user.getUsername(),
-                    orderNumber,
-                    orderTotal.toString(),
-                    shippingAddressFormatted,
-                    payment.getGatewayPaymentUrl()
-            ));
-        }
+        // 12. No email here: the confirmation is sent by PaymentService once payment succeeds.
 
         // 13. Return order response
         return getOrderDetails(userId, savedOrder.getId());

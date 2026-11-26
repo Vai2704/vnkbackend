@@ -62,4 +62,7 @@ public class ReferralReward extends BaseEntity {
 
     @Column(name = "used_in_order_id")
     private UUID usedInOrderId;
+
+    @Column(name = "coupon_id")
+    private UUID couponId;
 }

@@ -381,9 +381,14 @@ public class PaymentService {
     }
 
     private void notifyOrderStatus(Order order, String extraDetail) {
-        emailService.ifPresent(service -> userRepository.findById(order.getUserId()).ifPresent(user ->
+        emailService.ifPresent(service -> userRepository.findById(order.getUserId()).ifPresent(user -> {
+            if (order.getOrderStatus() == OrderStatus.CONFIRMED) {
+                service.sendOrderConfirmation(user.getEmail(), user.getUsername(), order.getOrderNumber());
+            } else {
                 service.sendOrderStatusUpdate(user.getEmail(), user.getUsername(),
-                        order.getOrderNumber(), order.getOrderStatus().name(), extraDetail)));
+                        order.getOrderNumber(), order.getOrderStatus().name(), extraDetail);
+            }
+        }));
     }
 
     /**
